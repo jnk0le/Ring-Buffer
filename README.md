@@ -18,7 +18,7 @@ else
 tmp = RingBuffer_Remove(&buff);
 
 if(RingBuffer_Load(&buff, &tmp)) // function is inlined so tmp never gets onto stack
-	// something was readen
+	// something was read
 else
 	// buffer empty
 ```
@@ -26,7 +26,7 @@ else
 ## notes
 
 The actual code might not be the most efficient in interrupt handlers since one more register have to be preserved for storing temporary index. 
-Further optimizations are possible but  but gcc is known to generate inefficient code especially in those cases.
+Further optimizations are possible but but gcc is known to generate inefficient code especially when larger elements are used or "just because".
 It is possible to reimplement in assembly:
 - Insert function [using only 3 registers + SREG](https://github.com/jnk0le/Easy-AVR-USART-C-Library/blob/master/usart.c#L4871)
 - Remove/Load functions [using only 2 registers + SREG](https://github.com/jnk0le/Easy-AVR-USART-C-Library/blob/master/usart.c#L4702)
