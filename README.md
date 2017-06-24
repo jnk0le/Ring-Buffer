@@ -1,10 +1,27 @@
 # AVR Optimized Ring Buffer
 
+- up to 255 stored elements (BUFFER_SIZE - 1)
 - provides underrun and overrun checks in insert/remove/load functions
 - only 2 bytes memory footprint except actuall buffer
-- atomic acces for SPSC cases without disabling interrupts
+- atomic operation for SPSC cases without disabling interrupts
 - buffer size implemented as a compile time constant to make use of AVR immediate instructions
-- currently implemented as a direct replacement for LUFA ring buff.
+- currently implemented as a direct replacement for LUFA ring buff with one additional function (RingBuffer_Load()).
+
+```
+uint8_t tmp;
+
+if(RingBuffer_Insert(&buff, tmp))
+	//element inserted
+else
+	//buffer full
+	
+tmp = RingBuffer_Remove(&buff);
+
+if(RingBuffer_Load(&buff, &tmp)) // function is inlined so tmp never gets onto stack
+	// something was readen
+else
+	// buffer empty
+```
 
 ## notes
 
@@ -15,5 +32,4 @@ It is possible to reimplement in assembly:
 - Remove/Load functions [using only 2 registers + SREG](https://github.com/jnk0le/Easy-AVR-USART-C-Library/blob/master/usart.c#L4702)
 
 ## todo
-- example code
 - compare sizes
