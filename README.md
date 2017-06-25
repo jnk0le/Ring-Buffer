@@ -11,9 +11,9 @@
 uint8_t tmp;
 
 if(RingBuffer_Insert(&buff, tmp))
-	//element inserted
+	// element inserted
 else
-	//buffer full
+	// buffer full
 	
 tmp = RingBuffer_Remove(&buff);
 

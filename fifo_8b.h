@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 #ifndef BUFFER_SIZE
-	#define BUFFER_SIZE 128
+	#define BUFFER_SIZE 128 // have to be power of 2
 #endif
 #ifndef RingBuff_Data_t
 	#define RingBuff_Data_t uint8_t
@@ -37,8 +37,8 @@
 		return (Buffer->Head - Buffer->Tail) & BUFFER_MASK;
 	}
 
-	static inline uint8_t RingBuffer_Available(RingBuff_t* Buffer) __attribute__ ((always_inline));
-	static inline uint8_t RingBuffer_Available(RingBuff_t* Buffer)
+	static inline uint8_t RingBuffer_GetFree(RingBuff_t* Buffer) __attribute__ ((always_inline));
+	static inline uint8_t RingBuffer_GetFree(RingBuff_t* Buffer)
 	{
 		return (Buffer->Tail - Buffer->Head - 1) & BUFFER_MASK;
 	}
