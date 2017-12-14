@@ -9,6 +9,7 @@
 #define FIFO_HPP
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifndef __AVR_ARCH__ // there is no STL available for AVR architecture
 	#include <limits>
@@ -128,7 +129,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 		static_assert((buffer_size != 0), "buffer cannot be of zero size");
 		static_assert((buffer_size != 1), "buffer cannot be of zero available size");
 		static_assert(!(buffer_size & buffer_mask), "buffer size is not a power of 2");
-		static_assert(sizeof(index_t) <= sizeof(buffer_size), "indexing type size is larger than size_t, operation is not implemented atomic and doesn't make sense");
+		static_assert(sizeof(index_t) <= sizeof(size_t), "indexing type size is larger than size_t, operation is not implemented atomic and doesn't make sense");
 
 	#ifdef __AVR_ARCH__ // there is no STL available for AVR architecture
 		static_assert(buffer_size-1 <= UINT_FAST8_MAX, "buffers larger than 256 elements are not implemented atomic"); // cover most UB cases
