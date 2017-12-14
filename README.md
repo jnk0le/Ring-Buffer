@@ -11,7 +11,7 @@
 ## notes
 
 - if ring buffer is allocated on the stack (local scope) or heap, it have to be explicitly cleared before use due to empty constructor
-- index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc can still generate `uxth` when not necessary)
+- index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc can still generate `uxth/uxtb` when not necessary)
 - 8 bit architectures other than AVR are not fixed yet
 
 ## todo:
