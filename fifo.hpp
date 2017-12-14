@@ -5,8 +5,8 @@
  * License: CC0                                                              *
  *****************************************************************************/
 
-#ifndef _FIFO_HPP_
-#define _FIFO_HPP_
+#ifndef FIFO_HPP
+#define FIFO_HPP
 
 #include <stdint.h>
 
@@ -132,7 +132,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 
 	#ifdef __AVR_ARCH__ // there is no STL available for AVR architecture
 		static_assert(buffer_size-1 <= UINT_FAST8_MAX, "buffers larger than 256 elements are not implemented atomic"); // cover most UB cases
-		// using indexing type larger than uint8_t cannot be checked at the moment (should still be atomic, but I can't guarantee anything)
+		static_assert(sizeof(index_t) == sizeof(uint8_t), "indexing type larger than unit8_t should still be atomic (<256 bytes), but it doesn't make sense");
 		// container type sign cannot be checked at the moment
 	#else // just do some regular assertions
 		static_assert(std::numeric_limits<index_t>::is_integer, "indexing type is not integral type");
@@ -141,4 +141,4 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 	#endif
 	};
 
-#endif //_FIFO_HPP_
+#endif //FIFO_HPP
