@@ -30,27 +30,27 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 
 		bool isEmpty(void)
 		{
-			return getCount() == 0;
+			return readAvailable() == 0;
 		}
 
 		bool isFull(void)
 		{
-			return getFree() == 0;
+			return writeAvailable() == 0;
 		}
 
-		index_t getCount(void) // read available
+		index_t readAvailable(void)
 		{
 			return (head - tail) & buffer_mask;
 		}
 
-		index_t getFree(void) // write available
+		index_t writeAvailable(void)
 		{
 			return (tail - head - 1) & buffer_mask;
 		}
 
 		size_t getSize(void)
 		{
-			return buffer_size;
+			return buffer_size-1;
 		}
 
 		size_t getUsableSize(void)
