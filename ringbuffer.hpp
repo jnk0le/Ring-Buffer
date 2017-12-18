@@ -5,8 +5,8 @@
  * License: CC0                                                              *
  *****************************************************************************/
 
-#ifndef FIFO_HPP
-#define FIFO_HPP
+#ifndef RINGBUFFER_HPP
+#define RINGBUFFER_HPP
 
 #include <stdint.h>
 #include <stddef.h>
@@ -38,12 +38,12 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			return getFree() == 0;
 		}
 
-		index_t getCount(void)
+		index_t getCount(void) // read available
 		{
 			return (head - tail) & buffer_mask;
 		}
 
-		index_t getFree(void)
+		index_t getFree(void) // write available
 		{
 			return (tail - head - 1) & buffer_mask;
 		}
@@ -119,6 +119,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			}
 			return true;
 		}
+
 	private:
 		constexpr static index_t buffer_mask = buffer_size-1;
 		volatile index_t head, tail;
@@ -142,4 +143,4 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 	#endif
 	};
 
-#endif //FIFO_HPP
+#endif //RINGBUFFER_HPP
