@@ -48,16 +48,6 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			return (tail - head - 1) & buffer_mask;
 		}
 
-		size_t getSize(void)
-		{
-			return buffer_size-1;
-		}
-
-		size_t getUsableSize(void)
-		{
-			return buffer_size-1;
-		}
-
 		bool insert(T data)
 		{
 			index_t tmpHead = head; // reduce overhead of accessing volatile variables and make SPSC (interrupt<->thread) access atomic
