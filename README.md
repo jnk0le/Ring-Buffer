@@ -45,7 +45,7 @@ int main()
 }
 
 // if multiple contexts are writing/reading buffer they shall not interrupt each other 
-// in this case those interrupts have to be of the same priority (nesting not allowed) 
+// in this case, those interrupts have to be of the same priority (nesting not allowed) 
 	
 extern "C" void SysTick_Handler(void)
 {
