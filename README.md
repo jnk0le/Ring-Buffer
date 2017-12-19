@@ -27,6 +27,36 @@ int main()
 - index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc can still generate `uxth/uxtb` when not necessary)
 - 8 bit architectures other than AVR are not fixed yet
 
+## example
+
+```
+Ringbuffer<const char*, 256> message;
+
+int main()
+{
+	//...
+	while(1)
+	{
+		const char* tmp;
+		while(!message.remove(tmp));
+		printf("%s fired\n", tmp);
+		//...
+	}
+}
+
+extern "C" void SysTick_Handler(void)
+{
+	//...
+	message.insert("SysTick_Handler");
+}
+
+extern "C" void USART2_IRQHandler(void)
+{
+	//...
+	message.insert("USART2_IRQHandler");
+}
+```
+
 ## todo:
 - block write/read
 - insert overwrite
