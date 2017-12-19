@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Generic ring buffer class for embedded targets                            *
+ * Generic ring buffer class template for embedded targets                   *
  * Author : jnk0le@hotmail.com                                               *
  *          https://github.com/jnk0le                                        *
  * License: CC0                                                              *
@@ -20,7 +20,12 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 	{
 	public:
 		Ringbuffer() {} // empty - it have to be statically allocated during compilation
-		//default copy constructor will not harm anything
+		Ringbuffer(int val)
+		{
+			head = val & buffer_mask;
+			tail = val & buffer_mask;
+		}
+
 		~Ringbuffer() {} // empty - it have to be statically allocated during compilation
 
 		void clear(void)

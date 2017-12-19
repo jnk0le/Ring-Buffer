@@ -10,14 +10,26 @@
 
 ## notes
 
-- if ring buffer is allocated on the stack (local scope) or heap, it have to be explicitly cleared before use due to empty constructor
+- if ring buffer is allocated on the stack (local scope) or heap, it have to be explicitly cleared before use or be creadet using ... constructor
+
+```
+Ringbuffer<uint8_t, 256> a; // global objects can use empty constructor // it is zero initialized through bss section
+
+int main()
+{
+	Ringbuffer<uint8_t, 512> b(0); // stack objects have undefined initial values so explicitly initialize head and tail to zeroth position
+	static Ringbuffer<uint16_t, 1024> c; // static objects can use empty constructor // it is zero initialized through bss section
+	
+	...
+}
+```
+
 - index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc can still generate `uxth/uxtb` when not necessary)
 - 8 bit architectures other than AVR are not fixed yet
 
 ## todo:
 - block write/read
 - insert overwrite
-- add clearing constructor
 - pick appropriate namespace that will not end in "using namespace"
 - fix 8bit archs
-- pointer based implementation
+- more implementations
