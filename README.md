@@ -3,7 +3,7 @@
 - C++11 and above
 - no exceptions/RTTI
 - designed for compile time (static) allocation and type evaluation
-- atomic operation for SPSC cases without disabling interrupts
+- lock-free atomic operation for SPSC cases
 - underrun and overrun checks in insert/remove functions
 - currently implemented as indexed table with `head == tail` empty state (n-1 available elements)
 - highly efficient on most microcontroller architectures (eg. avr, cortex-m)
@@ -44,7 +44,7 @@ int main()
 	}
 }
 
-// if multiple contexts are writing/reading buffer they shall not interrupt each other 
+// if multiple contexts are writing/reading buffer they shall not be interrupting each other 
 // in this case, those interrupts have to be of the same priority (nesting not allowed) 
 	
 extern "C" void SysTick_Handler(void)
