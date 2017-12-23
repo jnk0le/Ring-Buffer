@@ -64,4 +64,4 @@ extern "C" void USART2_IRQHandler(void)
 - pick appropriate namespace that will not end in "using namespace"
 - fix 8bit archs
 - more implementations
-- 
+- memory barriers for non gcc compilers

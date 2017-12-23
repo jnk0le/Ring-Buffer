@@ -64,6 +64,8 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			else
 			{
 				data_buff[tmpHead] = data;
+
+				asm volatile("":::"memory");
 				head = tmpHead; // write it back after writing element - consumer now can read this element
 			}
 			return true;
@@ -80,6 +82,8 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			else
 			{
 				data_buff[tmpHead] = *dst;
+
+				asm volatile("":::"memory");
 				head = tmpHead; // write it back after writing element - consumer now can read this element
 			}
 			return true;
@@ -95,6 +99,8 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			{
 				tmpTail = (tmpTail + 1) & buffer_mask;
 				data = data_buff[tmpTail];
+
+				asm volatile("":::"memory");
 				tail = tmpTail; // write it back after reading element - producer can now use this location for new element
 			}
 			return true;
@@ -110,6 +116,8 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			{
 				tmpTail = (tmpTail + 1) & buffer_mask;
 				*dst = data_buff[tmpTail];
+
+				asm volatile("":::"memory");
 				tail = tmpTail; // write it back after reading element - producer can now use this location for new element
 			}
 			return true;
