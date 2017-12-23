@@ -5,7 +5,7 @@
 - designed for compile time (static) allocation and type evaluation
 - lock-free atomic operation for SPSC cases
 - underrun and overrun checks in insert/remove functions
-- currently implemented as indexed table with `head == tail` empty state (n-1 available elements)
+- currently implemented as array with 2 indices (n-1 available elements, `head == tail` empty state)
 - highly efficient on most microcontroller architectures (eg. avr, cortex-m)
 
 ## notes
@@ -64,3 +64,4 @@ extern "C" void USART2_IRQHandler(void)
 - pick appropriate namespace that will not end in "using namespace"
 - fix 8bit archs
 - more implementations
+- 
