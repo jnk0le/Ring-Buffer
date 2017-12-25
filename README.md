@@ -12,11 +12,12 @@
 
 ### "Always Keep One Slot Open"
 
-- n-1 available slots (`head == tail` empty state)
 - implemented in `Ringbuffer` class
+- n-1 available slots (`head == tail` empty state)
 
 ### Counting total elements written/read (aka unmasked indices)
 
+- implemented in `Ringbuffer_unmasked` class
 - whole array is used
 - masking is performed when writing/reading array
 - insert operation might be a little slower due to comparison with (usually) large immediates.
@@ -53,8 +54,6 @@
 080002a2:   str     r3, [r2, #0]
 080002a4:   bx      lr
 ```
-
-- implemented in `Ringbuffer_unmasked` class
 
 ## notes
 
