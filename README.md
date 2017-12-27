@@ -57,7 +57,7 @@
 
 ## notes
 
-- if ring buffer is allocated on the stack (local scope) or heap, it have to be explicitly cleared before use or be createt using value initializing constructor
+- if ring buffer is allocated on the stack (local scope) or heap, it have to be explicitly cleared before use or be created using value initializing constructor
 
 ```
 Ringbuffer<uint8_t, 256> a; // global objects can use empty constructor // it is zero initialized through bss section
