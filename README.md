@@ -13,7 +13,7 @@
 
 - implemented in `Ringbuffer` class
 - n-1 available slots (`head == tail` empty state)
-- In this implementation indices are incremented before accessing arrays, to reduce register pressure and code size in relative to "normal" implementations.
+- In this implementation indices are incremented before accessing arrays, to reduce register pressure and code size relative to "normal" implementations.
 (index == 4 actually points to to element 5)
 
 ### Counting total elements written/read (aka unmasked/absolute indices)
