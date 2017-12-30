@@ -1,7 +1,7 @@
 # Template Ring Buffer
 
 - C++11 and above
-- no exceptions/RTTI
+- no exceptions, RTTI and virtual functions
 - designed for compile time (static) allocation and type evaluation
 - lock-free atomic operation in SPSC cases
 - underrun and overrun checks in insert/remove functions
@@ -21,7 +21,7 @@
 - implemented in `Ringbuffer_unmasked` class
 - whole array is used, no wasted slots
 - masking is performed when writing/reading array
-- insert operation might be a little slower due to comparison with (usually) large immediates.
+- insert operation might be a little slower. (some architectures also won't handle comparison with large immediates as kindly as thumb-2).
 - insert operation have a higher register pressure.
 
 ```
@@ -60,7 +60,6 @@
 ## notes
 
 - If ring buffer is allocated on the stack (local scope) or heap, it have to be explicitly cleared before use or be created using value initializing constructor
-- On cortex-m and similiar architectures, larger buffer sizes will generate larger instructions (execution might be slower due to waitstates or additional necessary instructions)
 
 ```
 Ringbuffer<uint8_t, 256> a; // global objects can use empty constructor // it is zero initialized through bss section
@@ -74,6 +73,7 @@ int main()
 }
 ```
 
+- On cortex-m and similiar architectures, larger buffer sizes will generate larger instructions (execution might be slower due to waitstates or additional necessary instructions)
 - index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc can still generate `uxth/uxtb` when not necessary)
 
 ## example
@@ -86,7 +86,7 @@ int main()
 	//...
 	while(1)
 	{
-		const char* tmp;
+		const char* tmp = nullptr;
 		while(!message.remove(tmp));
 		printf("%s fired\n", tmp);
 		//...
@@ -95,7 +95,7 @@ int main()
 
 // if multiple contexts are writing/reading buffer they shall not be interrupting each other 
 // in this case, those interrupts have to be of the same priority (nesting not allowed) 
-	
+
 extern "C" void SysTick_Handler(void)
 {
 	message.insert("SysTick_Handler");
