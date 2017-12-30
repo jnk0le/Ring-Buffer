@@ -9,18 +9,20 @@
 
 ## available implementations
 
-
 ### "Always Keep One Slot Open"
 
 - implemented in `Ringbuffer` class
 - n-1 available slots (`head == tail` empty state)
+- In this implementation indices are incremented before accessing arrays, to reduce register pressure and code size in relative to "normal" implementations.
+(index == 4 actually points to to element 5)
 
-### Counting total elements written/read (aka unmasked indices)
+### Counting total elements written/read (aka unmasked/absolute indices)
 
 - implemented in `Ringbuffer_unmasked` class
-- whole array is used
+- whole array is used, no wasted slots
 - masking is performed when writing/reading array
 - insert operation might be a little slower due to comparison with (usually) large immediates.
+- insert operation have a higher register pressure.
 
 ```
 // gcc 6.2 breaks it even more by doing weird unnecessary operations
@@ -36,7 +38,7 @@
 08000276:   adds    r1, r3, #1
 08000278:   and.w   r3, r3, #7
 0800027c:   add     r3, r2
-0800027e:   movs    r0, #2
+0800027e:   movs    r0, #2 // writing immediate // if function argument is used then registers will be pushed
 08000280:   strb    r0, [r3, #8]
 08000282:   str     r1, [r2, #0]
 08000284:   bx      lr
@@ -57,7 +59,8 @@
 
 ## notes
 
-- if ring buffer is allocated on the stack (local scope) or heap, it have to be explicitly cleared before use or be created using value initializing constructor
+- If ring buffer is allocated on the stack (local scope) or heap, it have to be explicitly cleared before use or be created using value initializing constructor
+- On cortex-m and similiar architectures, larger buffer sizes will generate larger instructions (execution might be slower due to waitstates or additional necessary instructions)
 
 ```
 Ringbuffer<uint8_t, 256> a; // global objects can use empty constructor // it is zero initialized through bss section
@@ -109,4 +112,8 @@ extern "C" void USART2_IRQHandler(void)
 - insert overwrite
 - pick appropriate namespace that will not end in "using namespace"
 - memory barriers for non gcc compilers
-- multi core ??
+- multi core // weak memory ordering
+- index_t + index_t union implementation ??
+- separate avr implementation ??
+- odd bit archs
+- get rid of useless zero extension instructions
