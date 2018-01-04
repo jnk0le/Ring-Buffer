@@ -74,7 +74,7 @@ int main()
 ```
 
 - On cortex-m and similiar architectures, larger buffer sizes will generate larger instructions (execution might be slower due to waitstates or additional necessary instructions)
-- index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc can still generate `uxth/uxtb` when not necessary)
+- index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc (6.2) will generate redundant `uxth/uxtb`)
 
 ## example
 
@@ -116,4 +116,5 @@ extern "C" void USART2_IRQHandler(void)
 - index_t + index_t union implementation ??
 - separate avr implementation ??
 - odd bit archs
+- somehow detect 8 bit archs
 - get rid of useless zero extension instructions
