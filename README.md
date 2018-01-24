@@ -1,7 +1,7 @@
 # Template Ring Buffer
 
 - C++11 and above
-- no exceptions, RTTI and virtual functions
+- no exceptions, RTTI, virtual functions and dynamic memory allocation
 - designed for compile time (static) allocation and type evaluation
 - lock-free atomic operation in SPSC cases
 - underrun and overrun checks in insert/remove functions
