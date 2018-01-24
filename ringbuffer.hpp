@@ -13,7 +13,7 @@
 #include <limits>
 #include <atomic>
 
-// those functions should be inline for performance reasons (register pressure, double comparisons and references that will get passed through the stack otherwise)
+// those functions are intentionally inline for performance reasons (register pressure, double comparisons and references that will get passed through the stack otherwise)
 // in case of need for uninlined multiple buffer write/read calls (code size reasons), it should be done at higher abstraction level
 
 template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
