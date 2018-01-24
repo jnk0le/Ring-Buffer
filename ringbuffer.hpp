@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <limits>
+#include <atomic>
 
 // those functions should be inline for performance reasons (register pressure, double comparisons and references that will get passed through the stack otherwise)
 // in case of need for uninlined multiple buffer write/read calls (code size reasons), it should be done at higher abstraction level
@@ -65,7 +66,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			{
 				data_buff[tmpHead] = data;
 
-				asm volatile("":::"memory");
+				std::atomic_signal_fence(std::memory_order_release);
 				head = tmpHead; // write it back after writing element - consumer now can read this element
 			}
 			return true;
@@ -83,7 +84,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			{
 				data_buff[tmpHead] = *dst;
 
-				asm volatile("":::"memory");
+				std::atomic_signal_fence(std::memory_order_release);
 				head = tmpHead; // write it back after writing element - consumer now can read this element
 			}
 			return true;
@@ -100,7 +101,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 				tmpTail = (tmpTail + 1) & buffer_mask;
 				data = data_buff[tmpTail];
 
-				asm volatile("":::"memory");
+				std::atomic_signal_fence(std::memory_order_release);
 				tail = tmpTail; // write it back after reading element - producer can now use this location for new element
 			}
 			return true;
@@ -117,7 +118,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 				tmpTail = (tmpTail + 1) & buffer_mask;
 				*dst = data_buff[tmpTail];
 
-				asm volatile("":::"memory");
+				std::atomic_signal_fence(std::memory_order_release);
 				tail = tmpTail; // write it back after reading element - producer can now use this location for new element
 			}
 			return true;
@@ -191,7 +192,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			{
 				data_buff[tmpHead++ & buffer_mask] = data;
 
-				asm volatile("":::"memory");
+				std::atomic_signal_fence(std::memory_order_release);
 				head = tmpHead; // write it back after writing element - consumer now can read this element
 			}
 			return true;
@@ -207,7 +208,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			{
 				data_buff[tmpHead++ & buffer_mask] = *data;
 
-				asm volatile("":::"memory");
+				std::atomic_signal_fence(std::memory_order_release);
 				head = tmpHead; // write it back after writing element - consumer now can read this element
 			}
 			return true;
@@ -223,7 +224,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			{
 				data = data_buff[tmpTail++ & buffer_mask];
 
-				asm volatile("":::"memory");
+				std::atomic_signal_fence(std::memory_order_release);
 				tail = tmpTail;  // write it back after reading element - producer can now use this location for new element
 			}
 			return true;
@@ -239,7 +240,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			{
 				*data = data_buff[tmpTail++ & buffer_mask];
 
-				asm volatile("":::"memory");
+				std::atomic_signal_fence(std::memory_order_release);
 				tail = tmpTail;  // write it back after reading element - producer can now use this location for new element
 			}
 			return true;
