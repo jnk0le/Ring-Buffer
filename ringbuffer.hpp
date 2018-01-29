@@ -143,10 +143,6 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 		static_assert(!(std::numeric_limits<index_t>::is_signed), "indexing type shall not be signed");
 		static_assert(buffer_mask <= std::numeric_limits<index_t>::max(),
 			"buffer size is too large for a given indexing type (maximum size for n-bit variable is 2^n)");
-
-		static_assert(sizeof(uint8_t) != sizeof(uint_fast8_t),
-			"(temporary workaround) cannot do a range check for 8 bit architectures at the moment. "
-			"Please shot an issue if you belive that your cpu is compatible or not 8-bit");
 	};
 
 template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
@@ -268,10 +264,6 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 		static_assert(!(std::numeric_limits<index_t>::is_signed), "indexing type shall not be signed");
 		static_assert(buffer_mask <= (std::numeric_limits<index_t>::max() >> 1),
 			"buffer size is too large for a given indexing type (maximum size for n-bit variable is 2^(n-1))");
-
-		static_assert(sizeof(uint8_t) != sizeof(uint_fast8_t) ,
-			"(temporary workaround) cannot do a range check for 8 bit architectures at the moment. "
-			"Please shot an issue if you belive that your cpu is compatible or not 8-bit");
 	};
 
 #endif //RINGBUFFER_HPP

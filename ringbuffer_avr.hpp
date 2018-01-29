@@ -145,10 +145,9 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 		//	"indexing type size is larger than size_t, operation is not implemented atomic and doesn't make sense");
 
 		static_assert(buffer_size - 1 <= UINT_FAST8_MAX, 
-			"(temporary 8b only) buffers larger than 256 elements are not implemented atomic"); // cover most UB cases
+			"buffers larger than 256 elements are not implemented atomic"); // cover most UB cases
 		static_assert(sizeof(index_t) == sizeof(uint8_t), 
-			"(temporary 8b only) indexing type larger than unit8_t should still be atomic (<256 bytes)," 
-			"but it doesn't make sense");
+			"indexing type larger than unit8_t should still be atomic (<256 bytes), but it doesn't make sense");
 		
 		// there is no STL available for AVR architecture
 		// container type cannot be asserted at the moment
@@ -271,10 +270,9 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 		//	"indexing type size is larger than size_t, operation is not implemented atomic and doesn't make sense");
 
 		static_assert(((buffer_size - 1) >> 1) <= UINT_FAST8_MAX, 
-			"(temporary 8b only) buffers larger than 128 elements are not implemented atomic"); // cover most UB cases
+			"buffers larger than 128 elements are not implemented atomic"); // cover most UB cases
 		static_assert(sizeof(index_t) == sizeof(uint8_t), 
-			"(temporary 8b only) indexing type larger than unit8_t should still be atomic (<256 bytes),"
-			" but it doesn't make sense");
+			"indexing type larger than unit8_t should still be atomic (<256 bytes), but it doesn't make sense");
 		
 		// there is no STL available for AVR architecture
 		// container type cannot be asserted at the moment
