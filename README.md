@@ -108,10 +108,9 @@ extern "C" void USART2_IRQHandler(void)
 ```
 
 ## todo:
-- block write/read
+- buff write/read
 - pick appropriate namespace that will not end in "using namespace"
 - multi core // weak memory ordering
 - index_t + index_t union implementation ??
 - odd bit archs
-- somehow detect 8 bit archs
 - get rid of useless zero extension instructions
