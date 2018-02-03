@@ -109,6 +109,7 @@ extern "C" void USART2_IRQHandler(void)
 
 ## todo:
 - buff write/read
+- consumer/producer flush
 - pick appropriate namespace that will not end in "using namespace"
 - multi core // weak memory ordering
 - index_t + index_t union implementation ??
