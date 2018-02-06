@@ -13,11 +13,11 @@
 #include <limits>
 #include <atomic>
 
-// those functions are intentionally inline for performance reasons (register pressure, double comparisons
-// and references that will get passed through the stack otherwise). in case of requirement for uninlined multiple
-// buffer write/read calls (code size reasons), it should be done at higher abstraction level
+// those functions are intentionally inline for performance reasons (register pressure, double
+// comparisons and references that will get passed through the stack otherwise). in case of
+// requirement for uninlined multiple calls, it should be done at higher abstraction level
 
-template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
+template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 	class Ringbuffer
 	{
 	public:
@@ -30,28 +30,23 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 
 		~Ringbuffer() {} // empty - it have to be statically allocated during compilation
 
-		void clear(void)
-		{
+		void clear(void){
 			head = tail;
 		}
 
-		bool isEmpty(void)
-		{
+		bool isEmpty(void){
 			return readAvailable() == 0;
 		}
 
-		bool isFull(void)
-		{
+		bool isFull(void){
 			return writeAvailable() == 0;
 		}
 
-		index_t readAvailable(void)
-		{
+		index_t readAvailable(void){
 			return (head - tail) & buffer_mask;
 		}
 
-		index_t writeAvailable(void)
-		{
+		index_t writeAvailable(void){
 			return (tail - head - 1) & buffer_mask;
 		}
 
@@ -125,6 +120,14 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			return true;
 		}
 
+		//template <size_t count_to_callback = 0>
+		size_t write_buff(T* buff, size_t count, size_t count_to_callback = 0,
+				void (*execute_data_callback)() = nullptr);
+
+		//template <size_t count_to_callback = 0>
+		size_t read_buff(T* buff, size_t count, size_t count_to_callback = 0,
+				void (*execute_data_callback)() = nullptr);
+
 	private:
 		constexpr static index_t buffer_mask = buffer_size-1;
 		volatile index_t head;
@@ -137,7 +140,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 		static_assert((buffer_size != 1), "buffer cannot be of zero available size");
 		static_assert(!(buffer_size & buffer_mask), "buffer size is not a power of 2");
 		static_assert(sizeof(index_t) <= sizeof(size_t),
-			"indexing type size is larger than size_t, operation is not implemented atomic and doesn't make sense");
+			"indexing type size is larger than size_t, operation is not lock free and doesn't make sense");
 
 		static_assert(std::numeric_limits<index_t>::is_integer, "indexing type is not integral type");
 		static_assert(!(std::numeric_limits<index_t>::is_signed), "indexing type shall not be signed");
@@ -145,7 +148,94 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			"buffer size is too large for a given indexing type (maximum size for n-bit variable is 2^n)");
 	};
 
-template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
+
+template<typename T, size_t buffer_size, typename index_t>
+//template<size_t count_to_callback>
+	size_t Ringbuffer<T, buffer_size, index_t>::write_buff(T* buff, size_t count, size_t count_to_callback,
+			void(*execute_data_callback)())
+	{
+		size_t written = 0;
+		index_t available = 0;
+		index_t tmpHead = head;
+		size_t toWrite = count;
+
+		if(count_to_callback != 0 && count_to_callback < count)
+			toWrite = count_to_callback;
+
+		while(written < count)
+		{
+			available = (tail - tmpHead - 1) & buffer_mask;
+
+			if(available == 0) // break if less than ??
+				break;
+
+			if(toWrite > available) // do not write more than we can
+				toWrite = available;
+
+			while(toWrite--)
+			{
+				tmpHead++;
+				tmpHead &= buffer_mask;
+				data_buff[tmpHead] = buff[written++];
+			}
+
+			std::atomic_signal_fence(std::memory_order_release);
+			head = tmpHead;
+
+			if(execute_data_callback)
+				execute_data_callback();
+
+			toWrite = count - written;
+		}
+
+		return written;
+	}
+
+template<typename T, size_t buffer_size, typename index_t>
+//template <size_t count_to_callback>
+	size_t Ringbuffer<T, buffer_size, index_t>::read_buff(T* buff, size_t count, size_t count_to_callback,
+			void(*execute_data_callback)())
+	{
+		size_t read = 0;
+		index_t available = 0;
+		index_t tmpTail = tail;
+		size_t toRead = count;
+
+		if(count_to_callback != 0 && count_to_callback < count)
+			toRead = count_to_callback;
+
+		while(read < count)
+		{
+			available = (head - tmpTail) & buffer_mask;
+
+			if(available == 0) // less than ??
+				break;
+
+			if(toRead > available) // do not write more than we can
+				toRead = available;
+
+			while(toRead--)
+			{
+				tmpTail++;
+				tmpTail &= buffer_mask;
+				buff[read++] = data_buff[tmpTail];
+			}
+
+			std::atomic_signal_fence(std::memory_order_release);
+			tail = tmpTail;
+
+			if(execute_data_callback)
+				execute_data_callback();
+
+			toRead = count - read;
+		}
+
+		return read;
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 	class Ringbuffer_unmasked
 	{
 	public:
@@ -158,28 +248,23 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 
 		~Ringbuffer_unmasked() {} // empty - it have to be statically allocated during compilation
 
-		void clear(void)
-		{
+		void clear(void){
 			head = tail;
 		}
 
-		bool isEmpty(void)
-		{
+		bool isEmpty(void){
 			return readAvailable() == 0;
 		}
 
-		bool isFull(void)
-		{
+		bool isFull(void){
 			return writeAvailable() == 0;
 		}
 
-		index_t readAvailable(void)
-		{
+		index_t readAvailable(void){
 			return head - tail;
 		}
 
-		index_t writeAvailable(void)
-		{
+		index_t writeAvailable(void){
 			return buffer_size - (head - tail);
 		}
 
@@ -247,6 +332,14 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 			return true;
 		}
 
+		//template <size_t count_to_callback = 0>
+		size_t write_buff(T* buff, size_t count, size_t count_to_callback = 0,
+				void (*execute_data_callback)(void) = nullptr);
+
+		//template <size_t count_to_callback = 0>
+		size_t read_buff(T* buff, size_t count, size_t count_to_callback = 0,
+				void (*execute_data_callback)(void) = nullptr);
+
 	private:
 		constexpr static index_t buffer_mask = buffer_size-1;
 		volatile index_t head;
@@ -258,12 +351,92 @@ template<typename T, size_t buffer_size = 16, typename index_t = uint_fast8_t>
 		static_assert((buffer_size != 0), "buffer cannot be of zero size");
 		static_assert(!(buffer_size & buffer_mask), "buffer size is not a power of 2");
 		static_assert(sizeof(index_t) <= sizeof(size_t),
-			"indexing type size is larger than size_t, operation is not implemented atomic and doesn't make sense");
+			"indexing type size is larger than size_t, operation is not lock free and doesn't make sense");
 
 		static_assert(std::numeric_limits<index_t>::is_integer, "indexing type is not integral type");
 		static_assert(!(std::numeric_limits<index_t>::is_signed), "indexing type shall not be signed");
 		static_assert(buffer_mask <= (std::numeric_limits<index_t>::max() >> 1),
 			"buffer size is too large for a given indexing type (maximum size for n-bit variable is 2^(n-1))");
 	};
+
+template<typename T, size_t buffer_size, typename index_t>
+//template <size_t count_to_callback>
+	size_t Ringbuffer_unmasked<T, buffer_size, index_t>::write_buff(T* buff, size_t count, size_t count_to_callback,
+			void(*execute_data_callback)())
+	{
+		size_t written = 0;
+		index_t available = 0;
+		index_t tmpHead = head;
+		size_t toWrite = count;
+
+		if(count_to_callback != 0 && count_to_callback < count)
+			toWrite = count_to_callback;
+
+		while(written < count)
+		{
+			available = buffer_size - (tmpHead - tail);
+
+			if(available == 0) // less than ??
+				break;
+
+			if(toWrite > available) // do not write more than we can
+				toWrite = available;
+
+			while(toWrite--)
+			{
+				data_buff[tmpHead++ & buffer_mask] = buff[written++];
+			}
+
+			std::atomic_signal_fence(std::memory_order_release);
+			head = tmpHead;
+
+			if(execute_data_callback)
+				execute_data_callback();
+
+			toWrite = count - written;
+		}
+
+		return written;
+	}
+
+template<typename T, size_t buffer_size, typename index_t>
+//template <size_t count_to_callback>
+	size_t Ringbuffer_unmasked<T, buffer_size, index_t>::read_buff(T* buff, size_t count, size_t count_to_callback,
+			void(*execute_data_callback)())
+	{
+		size_t read = 0;
+		index_t available = 0;
+		index_t tmpTail = tail;
+		size_t toRead = count;
+
+		if(count_to_callback != 0 && count_to_callback < count)
+			toRead = count_to_callback;
+
+		while(read < count)
+		{
+			available = head - tmpTail;
+
+			if(available == 0) // less than ??
+				break;
+
+			if(toRead > available) // do not write more than we can
+				toRead = available;
+
+			while(toRead--)
+			{
+				buff[read++] = data_buff[tmpTail++ & buffer_mask];
+			}
+
+			std::atomic_signal_fence(std::memory_order_release);
+			tail = tmpTail;
+
+			if(execute_data_callback)
+				execute_data_callback();
+
+			toRead = count - read;
+		}
+
+		return read;
+	}
 
 #endif //RINGBUFFER_HPP
