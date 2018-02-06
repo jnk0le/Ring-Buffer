@@ -41,7 +41,7 @@ int main()
 
 - On cortex-m and similiar architectures, larger buffer sizes will generate larger instructions (execution might be slower due to waitstates or additional necessary instructions)
 - index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc (6.2) will generate redundant `uxth/uxtb`)
-- 8 and odd (53, 24, 48) architectures are not supported in master branch.
+- 8 and odd (53, 48, etc) bit architectures are not supported in master branch at the moment. Broken code is likely to be generated.
 
 ## example
 
@@ -80,5 +80,5 @@ extern "C" void USART2_IRQHandler(void)
 - pick appropriate namespace that will not end in "using namespace"
 - multi core // weak memory ordering
 - index_t + index_t union implementation ??
-- odd bit archs
+- 8 and odd bit archs
 - get rid of useless zero extension instructions
