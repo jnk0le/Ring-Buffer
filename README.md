@@ -75,7 +75,6 @@ extern "C" void USART2_IRQHandler(void)
 ```
 
 ## todo:
-- consumer/producer flush
 - document api
 - pick appropriate namespace that will not end in "using namespace"
 - multi core // weak memory ordering

@@ -30,8 +30,12 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 
 		~Ringbuffer() {} // empty - it have to be statically allocated during compilation
 
-		void clear(void){
+		void producerClear(void){
 			head = tail;
+		}
+
+		void consumerClear(void){
+			tail = head;
 		}
 
 		bool isEmpty(void){
@@ -248,8 +252,12 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 
 		~Ringbuffer_unmasked() {} // empty - it have to be statically allocated during compilation
 
-		void clear(void){
+		void producerClear(void){
 			head = tail;
+		}
+
+		void consumerClear(void){
+			tail = head;
 		}
 
 		bool isEmpty(void){
