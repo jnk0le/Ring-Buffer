@@ -3,25 +3,10 @@
 - C++11 and above
 - no exceptions, RTTI, virtual functions and dynamic memory allocation
 - designed for compile time (static) allocation and type evaluation
+- No wasted slots
 - lock-free atomic operation in SPSC cases
 - underrun and overrun checks in insert/remove functions
-- highly efficient on most microcontroller architectures (eg. avr, cortex-m)
-
-## available implementations
-
-### "Always Keep One Slot Open"
-
-- implemented in `Ringbuffer` class
-- n-1 available slots (`head == tail` empty state)
-- In this implementation indices are incremented before accessing arrays, to reduce register pressure and code size relative to "normal" implementations.
-(index == 4 actually points to the element 5)
-
-### Counting total elements written/read (aka unmasked/absolute indices)
-
-- implemented in `Ringbuffer_unmasked` class
-- whole array is used, no wasted slots
-- masking is performed when writing/reading array
-- insert operation might be a little slower. (some architectures also won't handle comparison with large immediates as kindly as thumb-2).
+- highly efficient on most microcontroller architectures
 
 ## notes
 
