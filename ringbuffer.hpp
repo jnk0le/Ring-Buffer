@@ -118,11 +118,9 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 			return true;
 		}
 
-		//template <size_t count_to_callback = 0>
 		size_t write_buff(T* buff, size_t count, size_t count_to_callback = 0,
 				void (*execute_data_callback)(void) = nullptr);
 
-		//template <size_t count_to_callback = 0>
 		size_t read_buff(T* buff, size_t count, size_t count_to_callback = 0,
 				void (*execute_data_callback)(void) = nullptr);
 
@@ -146,8 +144,7 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 	};
 
 template<typename T, size_t buffer_size, typename index_t>
-//template <size_t count_to_callback>
-	size_t Ringbuffer_unmasked<T, buffer_size, index_t>::write_buff(T* buff, size_t count, size_t count_to_callback,
+	size_t Ringbuffer<T, buffer_size, index_t>::write_buff(T* buff, size_t count, size_t count_to_callback,
 			void(*execute_data_callback)())
 	{
 		size_t written = 0;
@@ -186,8 +183,7 @@ template<typename T, size_t buffer_size, typename index_t>
 	}
 
 template<typename T, size_t buffer_size, typename index_t>
-//template <size_t count_to_callback>
-	size_t Ringbuffer_unmasked<T, buffer_size, index_t>::read_buff(T* buff, size_t count, size_t count_to_callback,
+	size_t Ringbuffer<T, buffer_size, index_t>::read_buff(T* buff, size_t count, size_t count_to_callback,
 			void(*execute_data_callback)())
 	{
 		size_t read = 0;
