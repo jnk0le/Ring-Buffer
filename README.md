@@ -25,7 +25,8 @@ int main()
 ```
 
 - On cortex-m and similiar architectures, larger buffer sizes will generate larger instructions (execution might be slower due to waitstates or additional necessary instructions)
-- index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc (6.2) will generate redundant `uxth/uxtb`)
+- index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc will generate redundant `uxth/uxtb`)
+- Only lamda expression or functor callbacks can be inlined into `buffWrite`/`buffRead` functions (gcc constprops optimization) 
 - 8 and odd (53, 48, etc) bit architectures are not supported in master branch at the moment. Broken code is likely to be generated.
 
 ## example
