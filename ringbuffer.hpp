@@ -14,8 +14,8 @@
 #include <atomic>
 
 // those functions are intentionally inline for performance reasons (register pressure, double
-// comparisons and references that will get passed through the stack otherwise). in case of
-// requirement for uninlined multiple calls, it should be done at higher abstraction level
+// comparisons and references that will get passed through the stack otherwise). In case of
+// limited space, uninlining should be done at higher abstraction level
 
 template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 	class Ringbuffer
@@ -79,6 +79,23 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 			else
 			{
 				data_buff[tmpHead++ & buffer_mask] = *data;
+
+				std::atomic_signal_fence(std::memory_order_release);
+				head = tmpHead;
+			}
+			return true;
+		}
+
+		bool insertFromCallbackWhenAvailable(T(*acquire_data_callback)())
+		{
+			index_t tmpHead = head;
+
+			if((tmpHead - tail) == buffer_size)
+				return false;
+			else
+			{
+				//execute callback only when there is space in buffer
+				data_buff[tmpHead++ & buffer_mask] = acquire_data_callback();
 
 				std::atomic_signal_fence(std::memory_order_release);
 				head = tmpHead;
