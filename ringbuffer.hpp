@@ -17,7 +17,7 @@
 // comparisons and references that will get passed through the stack otherwise). In case of
 // limited space, uninlining should be done at higher abstraction level
 
-template<typename T, size_t buffer_size = 16, typename index_t = size_t>
+template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typename index_t = size_t>
 	class Ringbuffer
 	{
 	public:
@@ -64,7 +64,11 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 			{
 				data_buff[tmpHead++ & buffer_mask] = data;
 
-				std::atomic_signal_fence(std::memory_order_release);
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
+				else
+					std::atomic_signal_fence(std::memory_order_release);
+
 				head = tmpHead;
 			}
 			return true;
@@ -80,13 +84,17 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 			{
 				data_buff[tmpHead++ & buffer_mask] = *data;
 
-				std::atomic_signal_fence(std::memory_order_release);
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
+				else
+					std::atomic_signal_fence(std::memory_order_release);
+
 				head = tmpHead;
 			}
 			return true;
 		}
 
-		bool insertFromCallbackWhenAvailable(T(*acquire_data_callback)())
+		bool insertFromCallbackWhenAvailable(T(*acquire_data_callback)(void))
 		{
 			index_t tmpHead = head;
 
@@ -97,7 +105,11 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 				//execute callback only when there is space in buffer
 				data_buff[tmpHead++ & buffer_mask] = acquire_data_callback();
 
-				std::atomic_signal_fence(std::memory_order_release);
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
+				else
+					std::atomic_signal_fence(std::memory_order_release);
+
 				head = tmpHead;
 			}
 			return true;
@@ -113,7 +125,11 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 			{
 				data = data_buff[tmpTail++ & buffer_mask];
 
-				std::atomic_signal_fence(std::memory_order_release);
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
+				else
+					std::atomic_signal_fence(std::memory_order_release);
+
 				tail = tmpTail;
 			}
 			return true;
@@ -129,7 +145,11 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 			{
 				*data = data_buff[tmpTail++ & buffer_mask];
 
-				std::atomic_signal_fence(std::memory_order_release);
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
+				else
+					std::atomic_signal_fence(std::memory_order_release);
+
 				tail = tmpTail;
 			}
 			return true;
@@ -160,8 +180,8 @@ template<typename T, size_t buffer_size = 16, typename index_t = size_t>
 			"buffer size is too large for a given indexing type (maximum size for n-bit variable is 2^(n-1))");
 	};
 
-template<typename T, size_t buffer_size, typename index_t>
-	size_t Ringbuffer<T, buffer_size, index_t>::writeBuff(T* buff, size_t count, size_t count_to_callback,
+template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
+	size_t Ringbuffer<T, buffer_size, wmo_multi_core, index_t>::writeBuff(T* buff, size_t count, size_t count_to_callback,
 			void(*execute_data_callback)())
 	{
 		size_t written = 0;
@@ -187,7 +207,11 @@ template<typename T, size_t buffer_size, typename index_t>
 				data_buff[tmpHead++ & buffer_mask] = buff[written++];
 			}
 
-			std::atomic_signal_fence(std::memory_order_release);
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_release);
+			else
+				std::atomic_signal_fence(std::memory_order_release);
+
 			head = tmpHead;
 
 			if(execute_data_callback)
@@ -199,8 +223,8 @@ template<typename T, size_t buffer_size, typename index_t>
 		return written;
 	}
 
-template<typename T, size_t buffer_size, typename index_t>
-	size_t Ringbuffer<T, buffer_size, index_t>::readBuff(T* buff, size_t count, size_t count_to_callback,
+template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
+	size_t Ringbuffer<T, buffer_size, wmo_multi_core, index_t>::readBuff(T* buff, size_t count, size_t count_to_callback,
 			void(*execute_data_callback)())
 	{
 		size_t read = 0;
@@ -226,7 +250,11 @@ template<typename T, size_t buffer_size, typename index_t>
 				buff[read++] = data_buff[tmpTail++ & buffer_mask];
 			}
 
-			std::atomic_signal_fence(std::memory_order_release);
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_release);
+			else
+				std::atomic_signal_fence(std::memory_order_release);
+
 			tail = tmpTail;
 
 			if(execute_data_callback)

@@ -63,7 +63,6 @@ extern "C" void USART2_IRQHandler(void)
 ## todo:
 - document api
 - pick appropriate namespace that will not end in "using namespace"
-- multi core // weak memory ordering
 - index_t + index_t union implementation ??
 - 8 and odd bit archs
 - get rid of useless zero extension instructions
