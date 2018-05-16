@@ -1,9 +1,12 @@
-/*********************************************************************************************************************
- * Generic ring buffer class templates for embedded targets                                                          *
- * Author : jnk0le@hotmail.com                                                                                       *
- *          https://github.com/jnk0le                                                                                *
- * License: CC0                                                                                                      *
- *********************************************************************************************************************/
+/*!
+ * \file ringbuffer.hpp
+ * \version 1.0
+ * \brief Generic ring buffer implementation for embedded targets
+ *
+ * \author jnk0le <jnk0le@hotmail.com>
+ * \copyright CC0 License
+ * \date 22 Jun 2017
+ */
 
 #ifndef RINGBUFFER_HPP
 #define RINGBUFFER_HPP
@@ -13,47 +16,90 @@
 #include <limits>
 #include <atomic>
 
-// those functions are intentionally inline for performance reasons (register pressure, double
-// comparisons and references that will get passed through the stack otherwise). In case of
-// limited space, uninlining should be done at higher abstraction level
-
+/*!
+ * \brief Lock free with no wasted slots ringbuffer implementation
+ *
+ * \tparam T Type of buffered elements
+ * \tparam buffer_size Size of the buffer. Must be a power of 2.
+ * \tparam wmo_multi_core Generate extra memory barrier instructions in case of weak core to core communication
+ * \tparam index_t Type of array indexing type. Serves also as placeholder for future implementations.
+ */
 template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typename index_t = size_t>
 	class Ringbuffer
 	{
 	public:
-		Ringbuffer() {} // empty - it have to be statically allocated during compilation
-		Ringbuffer(int val)
-		{
+		/*!
+	 	 * \brief Intentionally empty constructor - nothing to allocate
+	 	 * \warning If class is instantiated on stack, heap or inside noinit section then the buffer have to be
+	 	 * explicitly cleared before use
+	 	 */
+		Ringbuffer() {}
+
+		/*!
+		 * \brief initializing constructor that should to be used when class is instantiated on stack or heap
+		 * \param val Value to initialize indexes with
+		 */
+		Ringbuffer(int val) {
 			head = val;
 			tail = val;
 		}
 
-		~Ringbuffer() {} // empty - it have to be statically allocated during compilation
+		/*!
+		 * \brief Intentionally empty destructor - nothing have to be released
+		 */
+		~Ringbuffer() {}
 
+		/*!
+		 * \brief Clear buffer from producer side
+		 */
 		void producerClear(void){
 			head = tail;
 		}
 
+		/*!
+		 * \brief Clear buffer from consumer side
+		 */
 		void consumerClear(void){
 			tail = head;
 		}
 
+		/*!
+		 * \brief Check if buffer is empty
+		 * \return Indicates if buffer is empty
+		 */
 		bool isEmpty(void){
 			return readAvailable() == 0;
 		}
 
+		/*!
+		 * \brief Check if buffer is full
+		 * \return Indicates if buffer is full
+		 */
 		bool isFull(void){
 			return writeAvailable() == 0;
 		}
 
+		/*!
+		 * \brief Check how many elements can be read from the buffer
+		 * \return Number of elements that can be read
+		 */
 		index_t readAvailable(void){
 			return head - tail;
 		}
 
+		/*!
+		 * \brief Check how many elements can be written into the buffer
+		 * \return Number of free slots that can be be written
+		 */
 		index_t writeAvailable(void){
 			return buffer_size - (head - tail);
 		}
 
+		/*!
+		 * \brief Inserts data into internal buffer
+		 * \param data element to be inserted into internal buffer
+		 * \return Indicates if callback was called and data was inserted into internal buffer
+		 */
 		bool insert(T data)
 		{
 			index_t tmpHead = head;
@@ -74,6 +120,11 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 			return true;
 		}
 
+		/*!
+		 * \brief Inserts data into internal buffer
+		 * \param[in] data Pointer to memory location where element, to be inserted into internal buffer, is located
+		 * \return Indicates if callback was called and data was inserted into internal buffer
+		 */
 		bool insert(T* data)
 		{
 			index_t tmpHead = head;
@@ -94,6 +145,15 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 			return true;
 		}
 
+		/*!
+		 * \brief Inserts data returned by callback function, into internal buffer
+		 *
+		 * This is a special case function that can be used to avoid redundant availability checks in case when
+		 * acquiring data have a side effects (like clearing status flags by reading data register)
+		 *
+		 * \param acquire_data_callback Pointer to callback function that returns element to be inserted into buffer
+		 * \return Indicates if callback was called and data was inserted into internal buffer
+		 */
 		bool insertFromCallbackWhenAvailable(T(*acquire_data_callback)(void))
 		{
 			index_t tmpHead = head;
@@ -115,6 +175,11 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 			return true;
 		}
 
+		/*!
+		 * \brief Reads one element from internal buffer without blocking
+		 * \param[out] data Reference to memory location where removed element will be stored
+		 * \return Indicates if data was fetched from the internal buffer
+		 */
 		bool remove(T& data)
 		{
 			index_t tmpTail = tail;
@@ -135,6 +200,11 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 			return true;
 		}
 
+		/*!
+		 * \brief Reads one element from internal buffer without blocking
+		 * \param[out] data Pointer to memory location where removed element will be stored
+		 * \return Indicates if data was fetched from the internal buffer
+		 */
 		bool remove(T* data)
 		{
 			index_t tmpTail = tail;
@@ -155,19 +225,46 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 			return true;
 		}
 
+		/*!
+		 * \brief insert multiple elements into internal buffer without blocking
+		 *
+		 * This function will continue writing new entries until all data is written or there is no more space.
+		 * The callback function can be used to indicate to peripheral/thread that it can start fetching data
+		 *
+		 * \param[in] buff Pointer to buffer with data to be inserted from
+		 * \param count Number of elements to write from the given buffer
+		 * \param count_to_callback Number of elements to write before calling a callback function in first loop
+		 * \param execute_data_callback Pointer to callback function executed after every loop iteration
+		 * \return Number of elements written into circular buffer
+		 */
 		size_t writeBuff(T* buff, size_t count, size_t count_to_callback = 0,
 				void (*execute_data_callback)(void) = nullptr);
 
+		/*!
+		 * \brief load multiple elements from internal buffer without blocking
+		 *
+		 * This function will continue reading new entries until all requested data is read or there is nothing more to
+		 * read.
+		 * The callback function can be used to indicate to peripheral/thread that it can start writing new data.
+		 *
+		 * \param[out] buff Pointer to buffer where data will be loaded into
+		 * \param count Number of elements to load into the given buffer
+		 * \param count_to_callback Number of elements to load before calling a callback function in first iteration
+		 * \param execute_data_callback Pointer to callback function executed after every loop iteration
+		 * \return Number of elements that were read from internal buffer
+		 */
 		size_t readBuff(T* buff, size_t count, size_t count_to_callback = 0,
 				void (*execute_data_callback)(void) = nullptr);
 
+	protected:
+		constexpr static index_t buffer_mask = buffer_size-1; //!< bitwise mask for a given buffer size
+		volatile index_t head; //!< head index
+		volatile index_t tail; //!< tail index
+
+		// put buffer after variables so everything can be reached with short offsets
+		T data_buff[buffer_size]; //!< actual buffer
+
 	private:
-		constexpr static index_t buffer_mask = buffer_size-1;
-		volatile index_t head;
-		volatile index_t tail;
-
-		T data_buff[buffer_size]; // put buffer after variables so everything can be reached with short offsets
-
 		// let's assert that no UB will be compiled
 		static_assert((buffer_size != 0), "buffer cannot be of zero size");
 		static_assert(!(buffer_size & buffer_mask), "buffer size is not a power of 2");
