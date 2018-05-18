@@ -61,7 +61,7 @@ extern "C" void USART2_IRQHandler(void)
 ```
 
 ## todo:
-- document api
+- examples ?
 - pick appropriate namespace that will not end in "using namespace"
 - index_t + index_t union implementation ??
 - 8 and odd bit archs

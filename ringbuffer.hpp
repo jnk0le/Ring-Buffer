@@ -39,10 +39,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \brief initializing constructor that should to be used when class is instantiated on stack or heap
 		 * \param val Value to initialize indexes with
 		 */
-		Ringbuffer(int val) {
-			head = val;
-			tail = val;
-		}
+		Ringbuffer(int val) : head(val), tail(val) {}
 
 		/*!
 		 * \brief Intentionally empty destructor - nothing have to be released
@@ -52,14 +49,14 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		/*!
 		 * \brief Clear buffer from producer side
 		 */
-		void producerClear(void){
+		void producerClear(void) const {
 			head = tail;
 		}
 
 		/*!
 		 * \brief Clear buffer from consumer side
 		 */
-		void consumerClear(void){
+		void consumerClear(void) const {
 			tail = head;
 		}
 
@@ -67,7 +64,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \brief Check if buffer is empty
 		 * \return Indicates if buffer is empty
 		 */
-		bool isEmpty(void){
+		bool isEmpty(void) const {
 			return readAvailable() == 0;
 		}
 
@@ -75,7 +72,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \brief Check if buffer is full
 		 * \return Indicates if buffer is full
 		 */
-		bool isFull(void){
+		bool isFull(void) const {
 			return writeAvailable() == 0;
 		}
 
@@ -83,7 +80,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \brief Check how many elements can be read from the buffer
 		 * \return Number of elements that can be read
 		 */
-		index_t readAvailable(void){
+		index_t readAvailable(void) const {
 			return head - tail;
 		}
 
@@ -91,12 +88,12 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \brief Check how many elements can be written into the buffer
 		 * \return Number of free slots that can be be written
 		 */
-		index_t writeAvailable(void){
+		index_t writeAvailable(void) const {
 			return buffer_size - (head - tail);
 		}
 
 		/*!
-		 * \brief Inserts data into internal buffer
+		 * \brief Inserts data into internal buffer, without blocking
 		 * \param data element to be inserted into internal buffer
 		 * \return Indicates if callback was called and data was inserted into internal buffer
 		 */
@@ -121,11 +118,11 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		}
 
 		/*!
-		 * \brief Inserts data into internal buffer
+		 * \brief Inserts data into internal buffer, without blocking
 		 * \param[in] data Pointer to memory location where element, to be inserted into internal buffer, is located
 		 * \return Indicates if callback was called and data was inserted into internal buffer
 		 */
-		bool insert(T* data)
+		bool insert(const T* data)
 		{
 			index_t tmpHead = head;
 
@@ -146,15 +143,15 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		}
 
 		/*!
-		 * \brief Inserts data returned by callback function, into internal buffer
+		 * \brief Inserts data returned by callback function, into internal buffer, without blocking
 		 *
-		 * This is a special case function that can be used to avoid redundant availability checks in case when
-		 * acquiring data have a side effects (like clearing status flags by reading data register)
+		 * This is a special purpose function that can be used to avoid redundant availability checks in case when
+		 * acquiring data have a side effects (like clearing status flags by reading a data register)
 		 *
 		 * \param acquire_data_callback Pointer to callback function that returns element to be inserted into buffer
 		 * \return Indicates if callback was called and data was inserted into internal buffer
 		 */
-		bool insertFromCallbackWhenAvailable(T(*acquire_data_callback)(void))
+		bool insertFromCallbackWhenAvailable(T (*acquire_data_callback)(void))
 		{
 			index_t tmpHead = head;
 
@@ -229,7 +226,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \brief insert multiple elements into internal buffer without blocking
 		 *
 		 * This function will continue writing new entries until all data is written or there is no more space.
-		 * The callback function can be used to indicate to peripheral/thread that it can start fetching data
+		 * The callback function can be used to indicate to consumer that it can start fetching data.
+		 *
+		 * \warning This function is not deterministic
 		 *
 		 * \param[in] buff Pointer to buffer with data to be inserted from
 		 * \param count Number of elements to write from the given buffer
@@ -237,15 +236,17 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \param execute_data_callback Pointer to callback function executed after every loop iteration
 		 * \return Number of elements written into circular buffer
 		 */
-		size_t writeBuff(T* buff, size_t count, size_t count_to_callback = 0,
+		size_t writeBuff(const T* buff, size_t count, size_t count_to_callback = 0,
 				void (*execute_data_callback)(void) = nullptr);
 
 		/*!
 		 * \brief load multiple elements from internal buffer without blocking
 		 *
-		 * This function will continue reading new entries until all requested data is read or there is nothing more to
-		 * read.
-		 * The callback function can be used to indicate to peripheral/thread that it can start writing new data.
+		 * This function will continue reading new entries until all requested data is read or there is nothing
+		 * more to read.
+		 * The callback function can be used to indicate to producer that it can start writing new data.
+		 *
+		 * \warning This function is not deterministic
 		 *
 		 * \param[out] buff Pointer to buffer where data will be loaded into
 		 * \param count Number of elements to load into the given buffer
@@ -274,12 +275,12 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		static_assert(std::numeric_limits<index_t>::is_integer, "indexing type is not integral type");
 		static_assert(!(std::numeric_limits<index_t>::is_signed), "indexing type shall not be signed");
 		static_assert(buffer_mask <= (std::numeric_limits<index_t>::max() >> 1),
-			"buffer size is too large for a given indexing type (maximum size for n-bit variable is 2^(n-1))");
+			"buffer size is too large for a given indexing type (maximum size for n-bit type is 2^(n-1))");
 	};
 
 template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
-	size_t Ringbuffer<T, buffer_size, wmo_multi_core, index_t>::writeBuff(T* buff, size_t count, size_t count_to_callback,
-			void(*execute_data_callback)())
+	size_t Ringbuffer<T, buffer_size, wmo_multi_core, index_t>::writeBuff(const T* buff, size_t count,
+			size_t count_to_callback, void(*execute_data_callback)())
 	{
 		size_t written = 0;
 		index_t available = 0;
@@ -321,8 +322,8 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
 	}
 
 template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
-	size_t Ringbuffer<T, buffer_size, wmo_multi_core, index_t>::readBuff(T* buff, size_t count, size_t count_to_callback,
-			void(*execute_data_callback)())
+	size_t Ringbuffer<T, buffer_size, wmo_multi_core, index_t>::readBuff(T* buff, size_t count,
+			size_t count_to_callback, void(*execute_data_callback)())
 	{
 		size_t read = 0;
 		index_t available = 0;
