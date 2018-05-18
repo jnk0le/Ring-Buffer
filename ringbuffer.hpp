@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.0
+ * \version 1.1
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
