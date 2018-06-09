@@ -1,4 +1,4 @@
-# Template Ring Buffer
+# Ring Buffer
 
 - C++11 and above
 - no exceptions, RTTI, virtual functions and dynamic memory allocation
