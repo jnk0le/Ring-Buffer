@@ -66,3 +66,5 @@ extern "C" void USART2_IRQHandler(void)
 - index_t + index_t union implementation ??
 - 8 and odd bit archs
 - get rid of useless zero extension instructions
+- dma compatibility
+- cache coherency
