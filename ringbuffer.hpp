@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.1.1
+ * \version 1.2.1
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -30,7 +30,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 	public:
 		/*!
 	 	 * \brief Intentionally empty constructor - nothing to allocate
-	 	 * \warning If class is instantiated on stack, heap or inside noinit section then the buffer have to be
+	 	 * \warning If object is instantiated on stack, heap or inside noinit section then the buffer have to be
 	 	 * explicitly cleared before use
 	 	 */
 		Ringbuffer() {}
@@ -50,6 +50,8 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \brief Clear buffer from producer side
 		 */
 		void producerClear(void) const {
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
 			head = tail;
 		}
 
@@ -57,6 +59,8 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \brief Clear buffer from consumer side
 		 */
 		void consumerClear(void) const {
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
 			tail = head;
 		}
 
@@ -81,6 +85,8 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \return Number of elements that can be read
 		 */
 		index_t readAvailable(void) const {
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
 			return head - tail;
 		}
 
@@ -89,6 +95,8 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * \return Number of free slots that can be be written
 		 */
 		index_t writeAvailable(void) const {
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
 			return buffer_size - (head - tail);
 		}
 
@@ -100,6 +108,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		bool insert(T data)
 		{
 			index_t tmp_head = head;
+
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
 
 			if((tmp_head - tail) == buffer_size)
 				return false;
@@ -113,6 +124,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 					std::atomic_signal_fence(std::memory_order_release);
 
 				head = tmp_head;
+
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
 			}
 			return true;
 		}
@@ -126,6 +140,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		{
 			index_t tmp_head = head;
 
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
+
 			if((tmp_head - tail) == buffer_size)
 				return false;
 			else
@@ -138,6 +155,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 					std::atomic_signal_fence(std::memory_order_release);
 
 				head = tmp_head;
+
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
 			}
 			return true;
 		}
@@ -155,6 +175,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		{
 			index_t tmp_head = head;
 
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
+
 			if((tmp_head - tail) == buffer_size)
 				return false;
 			else
@@ -168,6 +191,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 					std::atomic_signal_fence(std::memory_order_release);
 
 				head = tmp_head;
+
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
 			}
 			return true;
 		}
@@ -181,6 +207,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		{
 			index_t tmp_tail = tail;
 
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
+
 			if(tmp_tail == head)
 				return false;
 			else
@@ -193,6 +222,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 					std::atomic_signal_fence(std::memory_order_release);
 
 				tail = tmp_tail;
+
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
 			}
 			return true;
 		}
@@ -206,6 +238,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		{
 			index_t tmp_tail = tail;
 
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
+
 			if(tmp_tail == head)
 				return false;
 			else
@@ -218,6 +253,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 					std::atomic_signal_fence(std::memory_order_release);
 
 				tail = tmp_tail;
+
+				if(wmo_multi_core)
+					std::atomic_thread_fence(std::memory_order_release);
 			}
 			return true;
 		}
@@ -292,6 +330,9 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
 
 		while(written < count)
 		{
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
+
 			available = buffer_size - (tmp_head - tail);
 
 			if(available == 0) // less than ??
@@ -311,6 +352,9 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
 				std::atomic_signal_fence(std::memory_order_release);
 
 			head = tmp_head;
+
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_release);
 
 			if(execute_data_callback)
 				execute_data_callback();
@@ -335,6 +379,9 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
 
 		while(read < count)
 		{
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_acquire);
+
 			available = head - tmp_tail;
 
 			if(available == 0) // less than ??
@@ -354,6 +401,9 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
 				std::atomic_signal_fence(std::memory_order_release);
 
 			tail = tmp_tail;
+
+			if(wmo_multi_core)
+				std::atomic_thread_fence(std::memory_order_release);
 
 			if(execute_data_callback)
 				execute_data_callback();

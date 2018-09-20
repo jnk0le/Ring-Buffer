@@ -65,6 +65,8 @@ extern "C" void USART2_IRQHandler(void)
 - pick appropriate namespace that will not end in "using namespace"
 - index_t + index_t union implementation ??
 - 8 and odd bit archs
+- obtain/commit or iterator based data management
+- external storage
 - get rid of useless zero extension instructions
 - dma compatibility
 - cache coherency
