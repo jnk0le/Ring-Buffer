@@ -10,20 +10,6 @@
 
 ## notes
 
-- If ring buffer is allocated on the stack (local scope) or heap, it have to be explicitly cleared before use or be created using value initializing constructor
-
-```
-Ringbuffer<uint8_t, 256> a; // global objects can use empty constructor // it is zero initialized through bss section
-
-int main()
-{
-	Ringbuffer<uint8_t, 512> b(0); // stack objects have undefined initial values so explicitly initialize head and tail to zeroth position
-	static Ringbuffer<uint16_t, 1024> c; // static objects can use empty constructor // it is zero initialized through bss section
-	
-	//...
-}
-```
-
 - On cortex-m and similiar architectures, larger buffer sizes will generate larger instructions (execution might be slower due to waitstates or additional necessary instructions)
 - index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc will generate redundant `uxth/uxtb`)
 - Only lamda expressions or functor callbacks can be inlined into `buffWrite`/`buffRead` functions (gcc constprops optimization) 

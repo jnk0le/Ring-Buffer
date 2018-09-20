@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.2.1
+ * \version 1.3.0
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -17,7 +17,7 @@
 #include <atomic>
 
 /*!
- * \brief Lock free with no wasted slots ringbuffer implementation
+ * \brief Lock free, with no wasted slots ringbuffer implementation
  *
  * \tparam T Type of buffered elements
  * \tparam buffer_size Size of the buffer. Must be a power of 2.
@@ -29,17 +29,18 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 	{
 	public:
 		/*!
-	 	 * \brief Intentionally empty constructor - nothing to allocate
-	 	 * \warning If object is instantiated on stack, heap or inside noinit section then the buffer have to be
-	 	 * explicitly cleared before use
+	 	 * \brief Default constructor, will initialize head and tail indexes
 	 	 */
-		Ringbuffer() {}
+		Ringbuffer() : head(0), tail(0) {}
 
 		/*!
-		 * \brief initializing constructor that should to be used when class is instantiated on stack or heap
+		 * \brief Special case constructor to premature out unnecessary initialization code when object is
+		 * instatiated in .bss sec
+		 * \warning If object is instantiated on stack, heap or inside noinit section then the buffer have to be
+	 	 * explicitly cleared before use
 		 * \param val Value to initialize indexes with
 		 */
-		Ringbuffer(int val) : head(val), tail(val) {}
+		Ringbuffer(int dummy) { (void)(dummy); }
 
 		/*!
 		 * \brief Intentionally empty destructor - nothing have to be released
