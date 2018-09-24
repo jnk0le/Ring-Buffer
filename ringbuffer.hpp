@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.3.1
+ * \version 1.3.2
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -38,7 +38,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 		 * instatiated in .bss section
 		 * \warning If object is instantiated on stack, heap or inside noinit section then the buffer have to be
 	 	 * explicitly cleared before use
-		 * \param val Value to initialize indexes with
+		 * \param dummy Ignored
 		 */
 		Ringbuffer(int dummy) { (void)(dummy); }
 
