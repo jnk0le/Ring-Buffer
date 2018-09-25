@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.3.2
+ * \version 1.4.0
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -22,9 +22,10 @@
  * \tparam T Type of buffered elements
  * \tparam buffer_size Size of the buffer. Must be a power of 2.
  * \tparam wmo_multi_core Generate extra memory barrier instructions in case of weak core to core communication
+ * \tparam cacheline_size Size of the cache line, to insert appropriate padding in between indexes and buffer
  * \tparam index_t Type of array indexing type. Serves also as placeholder for future implementations.
  */
-template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typename index_t = size_t>
+template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_t cacheline_size = 0, typename index_t = size_t>
 	class Ringbuffer
 	{
 	public:
@@ -298,11 +299,11 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 
 	protected:
 		constexpr static index_t buffer_mask = buffer_size-1; //!< bitwise mask for a given buffer size
-		volatile index_t head; //!< head index
-		volatile index_t tail; //!< tail index
+		alignas(cacheline_size) volatile index_t head; //!< head index
+		alignas(cacheline_size) volatile index_t tail; //!< tail index
 
 		// put buffer after variables so everything can be reached with short offsets
-		T data_buff[buffer_size]; //!< actual buffer
+		alignas(cacheline_size) T data_buff[buffer_size]; //!< actual buffer
 
 	private:
 		// let's assert that no UB will be compiled
@@ -317,8 +318,8 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, typen
 			"buffer size is too large for a given indexing type (maximum size for n-bit type is 2^(n-1))");
 	};
 
-template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
-	size_t Ringbuffer<T, buffer_size, wmo_multi_core, index_t>::writeBuff(const T* buff, size_t count,
+template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_size, typename index_t>
+	size_t Ringbuffer<T, buffer_size, wmo_multi_core, cacheline_size, index_t>::writeBuff(const T* buff, size_t count,
 			size_t count_to_callback, void(*execute_data_callback)())
 	{
 		size_t written = 0;
@@ -366,8 +367,8 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
 		return written;
 	}
 
-template<typename T, size_t buffer_size, bool wmo_multi_core, typename index_t>
-	size_t Ringbuffer<T, buffer_size, wmo_multi_core, index_t>::readBuff(T* buff, size_t count,
+template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_size, typename index_t>
+	size_t Ringbuffer<T, buffer_size, wmo_multi_core, cacheline_size, index_t>::readBuff(T* buff, size_t count,
 			size_t count_to_callback, void(*execute_data_callback)())
 	{
 		size_t read = 0;
