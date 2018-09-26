@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.4.0
+ * \version 1.5.0
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -265,6 +265,17 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		/*!
 		 * \brief insert multiple elements into internal buffer without blocking
 		 *
+		 * This function will insert as much data as possible from given buffer.
+		 *
+		 * \param[in] buff Pointer to buffer with data to be inserted from
+		 * \param count Number of elements to write from the given buffer
+		 * \return Number of elements written into circular buffer
+		 */
+		size_t writeBuff(const T* buff, size_t count);
+
+		/*!
+		 * \brief insert multiple elements into internal buffer without blocking
+		 *
 		 * This function will continue writing new entries until all data is written or there is no more space.
 		 * The callback function can be used to indicate to consumer that it can start fetching data.
 		 *
@@ -276,8 +287,18 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 * \param execute_data_callback Pointer to callback function executed after every loop iteration
 		 * \return Number of elements written into circular buffer
 		 */
-		size_t writeBuff(const T* buff, size_t count, size_t count_to_callback = 0,
-				void (*execute_data_callback)(void) = nullptr);
+		size_t writeBuff(const T* buff, size_t count, size_t count_to_callback, void (*execute_data_callback)(void));
+
+		/*!
+		 * \brief load multiple elements from internal buffer without blocking
+		 *
+		 * This function will read up to specified amount of data.
+		 *
+		 * \param[out] buff Pointer to buffer where data will be loaded into
+		 * \param count Number of elements to load into the given buffer
+		 * \return Number of elements that were read from internal buffer
+		 */
+		size_t readBuff(T* buff, size_t count);
 
 		/*!
 		 * \brief load multiple elements from internal buffer without blocking
@@ -294,8 +315,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 * \param execute_data_callback Pointer to callback function executed after every loop iteration
 		 * \return Number of elements that were read from internal buffer
 		 */
-		size_t readBuff(T* buff, size_t count, size_t count_to_callback = 0,
-				void (*execute_data_callback)(void) = nullptr);
+		size_t readBuff(T* buff, size_t count, size_t count_to_callback, void (*execute_data_callback)(void));
 
 	protected:
 		constexpr static index_t buffer_mask = buffer_size-1; //!< bitwise mask for a given buffer size
@@ -317,6 +337,38 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		static_assert(buffer_mask <= (std::numeric_limits<index_t>::max() >> 1),
 			"buffer size is too large for a given indexing type (maximum size for n-bit type is 2^(n-1))");
 	};
+
+template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_size, typename index_t>
+	size_t Ringbuffer<T, buffer_size, wmo_multi_core, cacheline_size, index_t>::writeBuff(const T* buff, size_t count)
+	{
+		index_t available = 0;
+		index_t tmp_head = head;
+		size_t to_write = count;
+
+		if(wmo_multi_core)
+			std::atomic_thread_fence(std::memory_order_acquire);
+
+		available = buffer_size - (tmp_head - tail);
+
+		if(available < count) // do not write more than we can
+			to_write = available;
+
+		// maybe divide it into 2 separate writes
+		for(size_t i = 0; i < to_write; i++)
+			data_buff[tmp_head++ & buffer_mask] = buff[i];
+
+		if(wmo_multi_core)
+			std::atomic_thread_fence(std::memory_order_release);
+		else
+			std::atomic_signal_fence(std::memory_order_release);
+
+		head = tmp_head;
+
+		if(wmo_multi_core)
+			std::atomic_thread_fence(std::memory_order_release);
+
+		return to_write;
+	}
 
 template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_size, typename index_t>
 	size_t Ringbuffer<T, buffer_size, wmo_multi_core, cacheline_size, index_t>::writeBuff(const T* buff, size_t count,
@@ -365,6 +417,38 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 		}
 
 		return written;
+	}
+
+template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_size, typename index_t>
+	size_t Ringbuffer<T, buffer_size, wmo_multi_core, cacheline_size, index_t>::readBuff(T* buff, size_t count)
+	{
+		index_t available = 0;
+		index_t tmp_tail = head;
+		size_t to_read = count;
+
+		if(wmo_multi_core)
+			std::atomic_thread_fence(std::memory_order_acquire);
+
+		available = head - tmp_tail;
+
+		if(available < count) // do not read more than we can
+			to_read = available;
+
+		// maybe divide it into 2 separate reads
+		for(size_t i = 0; i < to_read; i++)
+			buff[i] = data_buff[tmp_tail++ & buffer_mask];
+
+		if(wmo_multi_core)
+			std::atomic_thread_fence(std::memory_order_release);
+		else
+			std::atomic_signal_fence(std::memory_order_release);
+
+		tail = tmp_tail;
+
+		if(wmo_multi_core)
+			std::atomic_thread_fence(std::memory_order_release);
+
+		return to_read;
 	}
 
 template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_size, typename index_t>
