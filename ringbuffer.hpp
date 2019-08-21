@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.5.0
+ * \version 1.5.1
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -423,7 +423,7 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 	size_t Ringbuffer<T, buffer_size, wmo_multi_core, cacheline_size, index_t>::readBuff(T* buff, size_t count)
 	{
 		index_t available = 0;
-		index_t tmp_tail = head;
+		index_t tmp_tail = tail;
 		size_t to_read = count;
 
 		if(wmo_multi_core)
