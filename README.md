@@ -6,13 +6,12 @@
 - No wasted slots
 - lock-free atomic operation in SPSC cases
 - underrun and overrun checks in insert/remove functions
-- highly efficient on most microcontroller architectures
+- highly efficient on most microcontroller architectures (nearly equal performance as in 'wasted-slot' implemetation)
 
 ## notes
 
-- On cortex-m and similiar architectures, larger buffer sizes will generate larger instructions (execution might be slower due to waitstates or additional necessary instructions)
-- index_t of size less than architecture reg size (size_t) might not be most efficient (arm gcc will generate redundant `uxth/uxtb`)
-- Only lamda expressions or functor callbacks can be inlined into `buffWrite`/`buffRead` functions (gcc constprops optimization) 
+- index_t of size less than architecture reg size (size_t) might not be most efficient ([known gcc bug](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71942))
+- Only lamda expressions or functor callbacks can be inlined into `buffWrite`/`buffRead` functions (gcc constprops optimization) ???????
 - 8 and odd (53, 48, etc) bit architectures are not supported in master branch at the moment. Broken code is likely to be generated.
 
 ## example
