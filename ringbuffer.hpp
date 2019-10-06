@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.5.1
+ * \version 1.5.2
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -21,7 +21,7 @@
  *
  * \tparam T Type of buffered elements
  * \tparam buffer_size Size of the buffer. Must be a power of 2.
- * \tparam wmo_multi_core Generate extra memory barrier instructions in case of weak core to core communication
+ * \tparam wmo_multi_core Generate extra memory barrier instructions in case of core to core communication
  * \tparam cacheline_size Size of the cache line, to insert appropriate padding in between indexes and buffer
  * \tparam index_t Type of array indexing type. Serves also as placeholder for future implementations.
  */
@@ -52,18 +52,15 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 * \brief Clear buffer from producer side
 		 */
 		void producerClear(void) const {
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-			head = tail;
+			//this may fail
+			head.store(tail.load(std::memory_order_relaxed), std::memory_order_relaxed);
 		}
 
 		/*!
 		 * \brief Clear buffer from consumer side
 		 */
 		void consumerClear(void) const {
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-			tail = head;
+			tail.store(head.load(std::memory_order_relaxed), std::memory_order_relaxed);
 		}
 
 		/*!
@@ -87,9 +84,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 * \return Number of elements that can be read
 		 */
 		index_t readAvailable(void) const {
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-			return head - tail;
+			return head.load(std::memory_order_relaxed) - tail.load(std::memory_order_relaxed);
 		}
 
 		/*!
@@ -97,9 +92,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 * \return Number of free slots that can be be written
 		 */
 		index_t writeAvailable(void) const {
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-			return buffer_size - (head - tail);
+			return buffer_size - (head.load(std::memory_order_relaxed) - tail.load(std::memory_order_relaxed));
 		}
 
 		/*!
@@ -109,26 +102,15 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 */
 		bool insert(T data)
 		{
-			index_t tmp_head = head;
+			index_t tmp_head = head.load(std::memory_order_relaxed);
 
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-
-			if((tmp_head - tail) == buffer_size)
+			if((tmp_head - tail.load(index_acquire_barrier)) == buffer_size)  // barrier probably not needed, leave it for safety for now
 				return false;
 			else
 			{
 				data_buff[tmp_head++ & buffer_mask] = data;
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
-				else
-					std::atomic_signal_fence(std::memory_order_release);
-
-				head = tmp_head;
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
+				std::atomic_signal_fence(std::memory_order_release);
+				head.store(tmp_head, index_release_barrier);
 			}
 			return true;
 		}
@@ -140,26 +122,15 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 */
 		bool insert(const T* data)
 		{
-			index_t tmp_head = head;
+			index_t tmp_head = head.load(std::memory_order_relaxed);
 
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-
-			if((tmp_head - tail) == buffer_size)
+			if((tmp_head - tail.load(index_acquire_barrier)) == buffer_size)  // barrier probably not needed, leave it for safety for now
 				return false;
 			else
 			{
 				data_buff[tmp_head++ & buffer_mask] = *data;
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
-				else
-					std::atomic_signal_fence(std::memory_order_release);
-
-				head = tmp_head;
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
+				std::atomic_signal_fence(std::memory_order_release);
+				head.store(tmp_head, index_release_barrier);
 			}
 			return true;
 		}
@@ -175,27 +146,16 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 */
 		bool insertFromCallbackWhenAvailable(T (*acquire_data_callback)(void))
 		{
-			index_t tmp_head = head;
+			index_t tmp_head = head.load(std::memory_order_relaxed);
 
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-
-			if((tmp_head - tail) == buffer_size)
+			if((tmp_head - tail.load(index_acquire_barrier)) == buffer_size)  // barrier probably not needed, leave it for safety for now
 				return false;
 			else
 			{
 				//execute callback only when there is space in buffer
 				data_buff[tmp_head++ & buffer_mask] = acquire_data_callback();
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
-				else
-					std::atomic_signal_fence(std::memory_order_release);
-
-				head = tmp_head;
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
+				std::atomic_signal_fence(std::memory_order_release);
+				head.store(tmp_head, index_release_barrier);
 			}
 			return true;
 		}
@@ -207,26 +167,15 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 */
 		bool remove(T& data)
 		{
-			index_t tmp_tail = tail;
+			index_t tmp_tail = tail.load(std::memory_order_relaxed);
 
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-
-			if(tmp_tail == head)
+			if(tmp_tail == head.load(index_acquire_barrier))
 				return false;
 			else
 			{
 				data = data_buff[tmp_tail++ & buffer_mask];
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
-				else
-					std::atomic_signal_fence(std::memory_order_release);
-
-				tail = tmp_tail;
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
+				std::atomic_signal_fence(std::memory_order_release);
+				tail.store(tmp_tail, index_release_barrier);
 			}
 			return true;
 		}
@@ -238,26 +187,15 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 */
 		bool remove(T* data)
 		{
-			index_t tmp_tail = tail;
+			index_t tmp_tail = tail.load(std::memory_order_relaxed);
 
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-
-			if(tmp_tail == head)
+			if(tmp_tail == head.load(index_acquire_barrier))
 				return false;
 			else
 			{
 				*data = data_buff[tmp_tail++ & buffer_mask];
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
-				else
-					std::atomic_signal_fence(std::memory_order_release);
-
-				tail = tmp_tail;
-
-				if(wmo_multi_core)
-					std::atomic_thread_fence(std::memory_order_release);
+				std::atomic_signal_fence(std::memory_order_release);
+				tail.store(tmp_tail, index_release_barrier);
 			}
 			return true;
 		}
@@ -319,14 +257,21 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 
 	protected:
 		constexpr static index_t buffer_mask = buffer_size-1; //!< bitwise mask for a given buffer size
-		alignas(cacheline_size) volatile index_t head; //!< head index
-		alignas(cacheline_size) volatile index_t tail; //!< tail index
+		constexpr static std::memory_order index_acquire_barrier = wmo_multi_core ?
+				  std::memory_order_acquire // do not load from, or store to buffer before confirmed by the opposite indice
+				: std::memory_order_relaxed;
+		constexpr static std::memory_order index_release_barrier = wmo_multi_core ?
+				  std::memory_order_release // do not update own indice before all operations on data_buff committed
+				: std::memory_order_relaxed;
+
+		alignas(cacheline_size) std::atomic<index_t> head; //!< head index
+		alignas(cacheline_size) std::atomic<index_t> tail; //!< tail index
 
 		// put buffer after variables so everything can be reached with short offsets
 		alignas(cacheline_size) T data_buff[buffer_size]; //!< actual buffer
 
 	private:
-		// let's assert that no UB will be compiled
+		// let's assert that no UB will be compiled in
 		static_assert((buffer_size != 0), "buffer cannot be of zero size");
 		static_assert(!(buffer_size & buffer_mask), "buffer size is not a power of 2");
 		static_assert(sizeof(index_t) <= sizeof(size_t),
@@ -342,13 +287,10 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 	size_t Ringbuffer<T, buffer_size, wmo_multi_core, cacheline_size, index_t>::writeBuff(const T* buff, size_t count)
 	{
 		index_t available = 0;
-		index_t tmp_head = head;
+		index_t tmp_head = head.load(std::memory_order_relaxed);
 		size_t to_write = count;
 
-		if(wmo_multi_core)
-			std::atomic_thread_fence(std::memory_order_acquire);
-
-		available = buffer_size - (tmp_head - tail);
+		available = buffer_size - (tmp_head - tail.load(index_acquire_barrier)); // barrier probably not needed, leave it for safety for now
 
 		if(available < count) // do not write more than we can
 			to_write = available;
@@ -357,15 +299,8 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 		for(size_t i = 0; i < to_write; i++)
 			data_buff[tmp_head++ & buffer_mask] = buff[i];
 
-		if(wmo_multi_core)
-			std::atomic_thread_fence(std::memory_order_release);
-		else
-			std::atomic_signal_fence(std::memory_order_release);
-
-		head = tmp_head;
-
-		if(wmo_multi_core)
-			std::atomic_thread_fence(std::memory_order_release);
+		std::atomic_signal_fence(std::memory_order_release);
+		head.store(tmp_head, index_release_barrier);
 
 		return to_write;
 	}
@@ -376,7 +311,7 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 	{
 		size_t written = 0;
 		index_t available = 0;
-		index_t tmp_head = head;
+		index_t tmp_head = head.load(std::memory_order_relaxed);
 		size_t to_write = count;
 
 		if(count_to_callback != 0 && count_to_callback < count)
@@ -384,10 +319,7 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 
 		while(written < count)
 		{
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-
-			available = buffer_size - (tmp_head - tail);
+			available = buffer_size - (tmp_head - tail.load(index_acquire_barrier)); // barrier probably not needed, leave it for safety for now
 
 			if(available == 0) // less than ??
 				break;
@@ -396,21 +328,12 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 				to_write = available;
 
 			while(to_write--)
-			{
 				data_buff[tmp_head++ & buffer_mask] = buff[written++];
-			}
 
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_release);
-			else
-				std::atomic_signal_fence(std::memory_order_release);
+			std::atomic_signal_fence(std::memory_order_release);
+			head.store(tmp_head, index_release_barrier);
 
-			head = tmp_head;
-
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_release);
-
-			if(execute_data_callback)
+			if(execute_data_callback != nullptr)
 				execute_data_callback();
 
 			to_write = count - written;
@@ -423,13 +346,10 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 	size_t Ringbuffer<T, buffer_size, wmo_multi_core, cacheline_size, index_t>::readBuff(T* buff, size_t count)
 	{
 		index_t available = 0;
-		index_t tmp_tail = tail;
+		index_t tmp_tail = tail.load(std::memory_order_relaxed);
 		size_t to_read = count;
 
-		if(wmo_multi_core)
-			std::atomic_thread_fence(std::memory_order_acquire);
-
-		available = head - tmp_tail;
+		available = head.load(index_acquire_barrier) - tmp_tail; // barrier probably needed to see new data_buff contents
 
 		if(available < count) // do not read more than we can
 			to_read = available;
@@ -438,15 +358,8 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 		for(size_t i = 0; i < to_read; i++)
 			buff[i] = data_buff[tmp_tail++ & buffer_mask];
 
-		if(wmo_multi_core)
-			std::atomic_thread_fence(std::memory_order_release);
-		else
-			std::atomic_signal_fence(std::memory_order_release);
-
-		tail = tmp_tail;
-
-		if(wmo_multi_core)
-			std::atomic_thread_fence(std::memory_order_release);
+		std::atomic_signal_fence(std::memory_order_release);
+		tail.store(tmp_tail, index_release_barrier);
 
 		return to_read;
 	}
@@ -457,7 +370,7 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 	{
 		size_t read = 0;
 		index_t available = 0;
-		index_t tmp_tail = tail;
+		index_t tmp_tail = tail.load(std::memory_order_relaxed);
 		size_t to_read = count;
 
 		if(count_to_callback != 0 && count_to_callback < count)
@@ -465,10 +378,7 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 
 		while(read < count)
 		{
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_acquire);
-
-			available = head - tmp_tail;
+			available = head.load(index_acquire_barrier) - tmp_tail; // barrier probably needed to see new data_buff contents
 
 			if(available == 0) // less than ??
 				break;
@@ -477,21 +387,12 @@ template<typename T, size_t buffer_size, bool wmo_multi_core, size_t cacheline_s
 				to_read = available;
 
 			while(to_read--)
-			{
 				buff[read++] = data_buff[tmp_tail++ & buffer_mask];
-			}
 
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_release);
-			else
-				std::atomic_signal_fence(std::memory_order_release);
+			std::atomic_signal_fence(std::memory_order_release);
+			tail.store(tmp_tail, index_release_barrier);
 
-			tail = tmp_tail;
-
-			if(wmo_multi_core)
-				std::atomic_thread_fence(std::memory_order_release);
-
-			if(execute_data_callback)
+			if(execute_data_callback != nullptr)
 				execute_data_callback();
 
 			to_read = count - read;
