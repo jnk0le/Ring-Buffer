@@ -14,6 +14,7 @@
 - Only lamda expressions or functor callbacks can be inlined into `buffWrite`/`buffRead` functions
 - 8 and odd (53, 48, etc) bit architectures are not supported in master branch at the moment. Broken code is likely to be generated.
 - relaxed atomic stores on RISC-V gcc port [may be inefficient](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89835)
+- the Alpha's ultra-weak memory model is not supported at the moment
 
 ## example
 
