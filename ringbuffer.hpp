@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.6.0
+ * \version 1.7.0
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -79,7 +79,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 * \return Number of elements that can be read
 		 */
 		index_t readAvailable(void) const {
-			return head.load(std::memory_order_relaxed) - tail.load(std::memory_order_relaxed);
+			return head.load(index_acquire_barrier) - tail.load(std::memory_order_relaxed);
 		}
 
 		/*!
@@ -87,7 +87,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 		 * \return Number of free slots that can be be written
 		 */
 		index_t writeAvailable(void) const {
-			return buffer_size - (head.load(std::memory_order_relaxed) - tail.load(std::memory_order_relaxed));
+			return buffer_size - (head.load(std::memory_order_relaxed) - tail.load(index_acquire_barrier));
 		}
 
 		/*!
@@ -222,6 +222,29 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_
 				return nullptr;
 			else
 				return &data_buff[tmp_tail];
+		}
+
+		/*!
+		 * \brief
+		 * \param index
+		 * \return
+		 */
+		T* at(size_t index) {
+			index_t tmp_tail = tail.load(std::memory_order_relaxed);
+
+			if((head.load(index_acquire_barrier) - tmp_tail) <= index)
+				return nullptr;
+			else
+				return &data_buff[(tmp_tail + index) & buffer_mask];
+		}
+
+		/*!
+		 * \brief
+		 * \param index
+		 * \return
+		 */
+		T& operator[](size_t index) {
+			return data_buff[(tail.load(std::memory_order_relaxed) + index) & buffer_mask];
 		}
 
 		/*!

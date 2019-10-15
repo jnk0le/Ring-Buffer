@@ -1,10 +1,10 @@
 # Ring Buffer
 
-- C++11 and above
+- pure C++11, no OS dependency
 - no exceptions, RTTI, virtual functions and dynamic memory allocation
 - designed for compile time (static) allocation and type evaluation
-- No wasted slots
-- lock-free atomic operation in SPSC cases
+- no wasted slots
+- lock and wait free SPSC operation
 - underrun and overrun checks in insert/remove functions
 - highly efficient on most microcontroller architectures (nearly equal performance as in 'wasted-slot' implemetation)
 
@@ -12,9 +12,9 @@
 
 - index_t of size less than architecture reg size (size_t) might not be most efficient ([known gcc bug](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71942))
 - Only lamda expressions or functor callbacks can be inlined into `buffWrite`/`buffRead` functions
-- 8 and odd (53, 48, etc) bit architectures are not supported in master branch at the moment. Broken code is likely to be generated.
+- 8 and odd (53, 48, etc) bit architectures are not supported in master branch at the moment. Broken code is likely to be generated
 - relaxed atomic stores on RISC-V gcc port [may be inefficient](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89835)
-- the Alpha's ultra-weak memory model is not supported at the moment
+- the DEC Alpha ultra-weak memory model is not supported at the moment
 
 ## example
 
@@ -44,5 +44,6 @@ extern "C" void SysTick_Handler(void)
 extern "C" void USART2_IRQHandler(void)
 {
 	message.insert("USART2_IRQHandler");
+	//...
 }
 ```
