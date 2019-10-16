@@ -25,7 +25,7 @@
  * \tparam cacheline_size Size of the cache line, to insert appropriate padding in between indexes and buffer
  * \tparam index_t Type of array indexing type. Serves also as placeholder for future implementations.
  */
-template<typename T, size_t buffer_size = 16, bool wmo_multi_core = false, size_t cacheline_size = 0, typename index_t = size_t>
+template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t cacheline_size = 0, typename index_t = size_t>
 	class Ringbuffer
 	{
 	public:
