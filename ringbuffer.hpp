@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.7.1
+ * \version 1.8.0
  * \brief Generic ring buffer implementation for embedded targets
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -169,6 +169,21 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 				tail.store(++tmp_tail, index_release_barrier); // release in case data was loaded/used before
 
 			return true;
+		}
+
+		/*!
+		 * \brief
+		 * \param cnt
+		 * \return number of removed elements
+		 */
+		size_t remove(size_t cnt) {
+			index_t tmp_tail = tail.load(std::memory_order_relaxed);
+			index_t avail = head.load(std::memory_order_relaxed) - tmp_tail;
+
+			cnt = (cnt > avail) ? avail : cnt;
+
+			tail.store(tmp_tail + cnt, index_release_barrier);
+			return cnt;
 		}
 
 		/*!
