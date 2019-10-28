@@ -1,7 +1,7 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.8.0
- * \brief Generic ring buffer implementation for embedded targets
+ * \version 1.8.1
+ * \brief Simple SPSC ring buffer implementation
  *
  * \author jnk0le <jnk0le@hotmail.com>
  * \copyright CC0 License
@@ -60,7 +60,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 
 		/*!
 		 * \brief Check if buffer is empty
-		 * \return Indicates if buffer is empty
+		 * \return True if buffer is empty
 		 */
 		bool isEmpty(void) const {
 			return readAvailable() == 0;
@@ -68,7 +68,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 
 		/*!
 		 * \brief Check if buffer is full
-		 * \return Indicates if buffer is full
+		 * \return True if buffer is full
 		 */
 		bool isFull(void) const {
 			return writeAvailable() == 0;
@@ -93,7 +93,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		/*!
 		 * \brief Inserts data into internal buffer, without blocking
 		 * \param data element to be inserted into internal buffer
-		 * \return Indicates if callback was called and data was inserted into internal buffer
+		 * \return True if data was inserted
 		 */
 		bool insert(T data)
 		{
@@ -113,7 +113,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		/*!
 		 * \brief Inserts data into internal buffer, without blocking
 		 * \param[in] data Pointer to memory location where element, to be inserted into internal buffer, is located
-		 * \return Indicates if callback was called and data was inserted into internal buffer
+		 * \return True if data was inserted
 		 */
 		bool insert(const T* data)
 		{
@@ -134,12 +134,12 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		 * \brief Inserts data returned by callback function, into internal buffer, without blocking
 		 *
 		 * This is a special purpose function that can be used to avoid redundant availability checks in case when
-		 * acquiring data have a side effects (like clearing status flags by reading a data register)
+		 * acquiring data have a side effects (like clearing status flags by reading a peripheral data register)
 		 *
-		 * \param acquire_data_callback Pointer to callback function that returns element to be inserted into buffer
-		 * \return Indicates if callback was called and data was inserted into internal buffer
+		 * \param get_data_callback Pointer to callback function that returns element to be inserted into buffer
+		 * \return True if data was inserted and callback called
 		 */
-		bool insertFromCallbackWhenAvailable(T (*acquire_data_callback)(void))
+		bool insertFromCallbackWhenAvailable(T (*get_data_callback)(void))
 		{
 			index_t tmp_head = head.load(std::memory_order_relaxed);
 
@@ -148,7 +148,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 			else
 			{
 				//execute callback only when there is space in buffer
-				data_buff[tmp_head++ & buffer_mask] = acquire_data_callback();
+				data_buff[tmp_head++ & buffer_mask] = get_data_callback();
 				std::atomic_signal_fence(std::memory_order_release);
 				head.store(tmp_head, index_release_barrier);
 			}
@@ -156,8 +156,8 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		}
 
 		/*!
-		 * \brief
-		 * \return
+		 * \brief Removes single element without reading
+		 * \return True if one element was removed
 		 */
 		bool remove()
 		{
@@ -172,9 +172,9 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		}
 
 		/*!
-		 * \brief
-		 * \param cnt
-		 * \return number of removed elements
+		 * \brief Removes multiple elements without reading and storing it elsewhere
+		 * \param cnt Maximum number of elements to remove
+		 * \return Number of removed elements
 		 */
 		size_t remove(size_t cnt) {
 			index_t tmp_tail = tail.load(std::memory_order_relaxed);
@@ -189,30 +189,18 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		/*!
 		 * \brief Reads one element from internal buffer without blocking
 		 * \param[out] data Reference to memory location where removed element will be stored
-		 * \return Indicates if data was fetched from the internal buffer
+		 * \return True if data was fetched from the internal buffer
 		 */
-		bool remove(T& data)
-		{
-			index_t tmp_tail = tail.load(std::memory_order_relaxed);
-
-			if(tmp_tail == head.load(index_acquire_barrier))
-				return false;
-			else
-			{
-				data = data_buff[tmp_tail++ & buffer_mask];
-				std::atomic_signal_fence(std::memory_order_release);
-				tail.store(tmp_tail, index_release_barrier);
-			}
-			return true;
+		bool remove(T& data) {
+			return remove(&data); // references are anyway implemented as pointers
 		}
 
 		/*!
 		 * \brief Reads one element from internal buffer without blocking
 		 * \param[out] data Pointer to memory location where removed element will be stored
-		 * \return Indicates if data was fetched from the internal buffer
+		 * \return True if data was fetched from the internal buffer
 		 */
-		bool remove(T* data)
-		{
+		bool remove(T* data) {
 			index_t tmp_tail = tail.load(std::memory_order_relaxed);
 
 			if(tmp_tail == head.load(index_acquire_barrier))
@@ -227,8 +215,11 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		}
 
 		/*!
-		 * \brief
-		 * \return
+		 * \brief Gets the first element in the buffer on consumed side
+		 *
+		 * It is safe to use and modify item contents only on consumer side
+		 *
+		 * \return Pointer to first element, nullptr if buffer was empty
 		 */
 		T* peek() {
 			index_t tmp_tail = tail.load(std::memory_order_relaxed);
@@ -240,9 +231,12 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		}
 
 		/*!
-		 * \brief
-		 * \param index
-		 * \return
+		 * \brief Gets the n'th element on consumed side
+		 *
+		 * It is safe to use and modify item contents only on consumer side
+		 *
+		 * \param index Item offset starting on the consumed side
+		 * \return Pointer to requested element, nullptr if index exceeds storage count
 		 */
 		T* at(size_t index) {
 			index_t tmp_tail = tail.load(std::memory_order_relaxed);
@@ -254,27 +248,33 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		}
 
 		/*!
-		 * \brief
-		 * \param index
-		 * \return
+		 * \brief Gets the n'th element on consumed side
+		 *
+		 * Unchecked operation, assumes that software already knows if the element can be used, if
+		 * requested index is out of bounds then reference will point to somewhere inside the buffer
+		 * The isEmpty() and readAvailable() will place appropriate memory barriers if used as loop limiter
+		 * It is safe to use and modify T contents only on consumer side
+		 *
+		 * \param index Item offset starting on the consumed side
+		 * \return Reference to requested element, undefined if index exceeds storage count
 		 */
 		T& operator[](size_t index) {
 			return data_buff[(tail.load(std::memory_order_relaxed) + index) & buffer_mask];
 		}
 
 		/*!
-		 * \brief insert multiple elements into internal buffer without blocking
+		 * \brief Insert multiple elements into internal buffer without blocking
 		 *
 		 * This function will insert as much data as possible from given buffer.
 		 *
 		 * \param[in] buff Pointer to buffer with data to be inserted from
 		 * \param count Number of elements to write from the given buffer
-		 * \return Number of elements written into circular buffer
+		 * \return Number of elements written into internal buffer
 		 */
 		size_t writeBuff(const T* buff, size_t count);
 
 		/*!
-		 * \brief insert multiple elements into internal buffer without blocking
+		 * \brief Insert multiple elements into internal buffer without blocking
 		 *
 		 * This function will continue writing new entries until all data is written or there is no more space.
 		 * The callback function can be used to indicate to consumer that it can start fetching data.
@@ -285,12 +285,12 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		 * \param count Number of elements to write from the given buffer
 		 * \param count_to_callback Number of elements to write before calling a callback function in first loop
 		 * \param execute_data_callback Pointer to callback function executed after every loop iteration
-		 * \return Number of elements written into circular buffer
+		 * \return Number of elements written into internal  buffer
 		 */
 		size_t writeBuff(const T* buff, size_t count, size_t count_to_callback, void (*execute_data_callback)(void));
 
 		/*!
-		 * \brief load multiple elements from internal buffer without blocking
+		 * \brief Load multiple elements from internal buffer without blocking
 		 *
 		 * This function will read up to specified amount of data.
 		 *
@@ -301,7 +301,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 		size_t readBuff(T* buff, size_t count);
 
 		/*!
-		 * \brief load multiple elements from internal buffer without blocking
+		 * \brief Load multiple elements from internal buffer without blocking
 		 *
 		 * This function will continue reading new entries until all requested data is read or there is nothing
 		 * more to read.
