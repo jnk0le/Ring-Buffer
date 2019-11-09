@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.8.1
+ * \version 1.8.2
  * \brief Simple SPSC ring buffer implementation
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -335,7 +335,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 	private:
 		// let's assert that no UB will be compiled in
 		static_assert((buffer_size != 0), "buffer cannot be of zero size");
-		static_assert(!(buffer_size & buffer_mask), "buffer size is not a power of 2");
+		static_assert((buffer_size & buffer_mask) == 0, "buffer size is not a power of 2");
 		static_assert(sizeof(index_t) <= sizeof(size_t),
 			"indexing type size is larger than size_t, operation is not lock free and doesn't make sense");
 
