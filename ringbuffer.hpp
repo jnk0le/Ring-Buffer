@@ -16,6 +16,10 @@
 #include <limits>
 #include <atomic>
 
+#if defined max
+#undef max
+#endif
+
 /*!
  * \brief Lock free, with no wasted slots ringbuffer implementation
  *
