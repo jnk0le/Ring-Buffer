@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 1.8.2
+ * \version 1.8.3
  * \brief Simple SPSC ring buffer implementation
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -227,7 +227,7 @@ template<typename T, size_t buffer_size = 16, bool wmo_multi_core = true, size_t
 			if(tmp_tail == head.load(index_acquire_barrier))
 				return nullptr;
 			else
-				return &data_buff[tmp_tail];
+				return &data_buff[tmp_tail & buffer_mask];
 		}
 
 		/*!
