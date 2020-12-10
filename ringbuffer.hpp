@@ -48,7 +48,7 @@ namespace jnk0le
 			/*!
 			 * \brief Clear buffer from producer side
 			 */
-			void producerClear(void) const {
+			void producerClear(void) {
 				//this may fail
 				head.store(tail.load(std::memory_order_relaxed), std::memory_order_relaxed);
 			}
@@ -56,7 +56,7 @@ namespace jnk0le
 			/*!
 			 * \brief Clear buffer from consumer side
 			 */
-			void consumerClear(void) const {
+			void consumerClear(void) {
 				tail.store(head.load(std::memory_order_relaxed), std::memory_order_relaxed);
 			}
 
