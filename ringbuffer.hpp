@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 2.0.0
+ * \version 2.0.1
  * \brief Simple SPSC ring buffer implementation
  *
  * \author jnk0le <jnk0le@hotmail.com>
