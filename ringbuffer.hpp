@@ -23,7 +23,7 @@ namespace jnk0le
 	 *
 	 * \tparam T Type of buffered elements
 	 * \tparam buffer_size Size of the buffer. Must be a power of 2.
-	 * \tparam fake_tso Omit generation of explicit barrier code to avoid unnecesary instructions in tso scenario (single core)
+	 * \tparam fake_tso Omit generation of explicit barrier code to avoid unnecesary instructions in tso scenario (e.g. simple microcontrollers/single core)
 	 * \tparam cacheline_size Size of the cache line, to insert appropriate padding in between indexes and buffer
 	 * \tparam index_t Type of array indexing type. Serves also as placeholder for future implementations.
 	 */
