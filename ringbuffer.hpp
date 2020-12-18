@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 2.0.1
+ * \version 2.0.2
  * \brief Simple SPSC ring buffer implementation
  *
  * \author jnk0le <jnk0le@hotmail.com>
@@ -47,10 +47,12 @@ namespace jnk0le
 
 			/*!
 			 * \brief Clear buffer from producer side
+			 * \warning function may return without performing any action if consumer tries to read data at the same time
 			 */
 			void producerClear(void) {
-				//this may fail
-				head.store(tail.load(std::memory_order_relaxed), std::memory_order_relaxed);
+				// head modification will lead to underflow if cleared during consumer read
+				// doing this properly with CAS is not possible without modifying the consumer code
+				consumerClear();
 			}
 
 			/*!
