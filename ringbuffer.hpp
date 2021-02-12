@@ -344,7 +344,7 @@ namespace jnk0le
 
 			static_assert(std::numeric_limits<index_t>::is_integer, "indexing type is not integral type");
 			static_assert(!(std::numeric_limits<index_t>::is_signed), "indexing type shall not be signed");
-			static_assert(buffer_mask <= (std::numeric_limits<index_t>::max() >> 1),
+			static_assert(buffer_mask <= ((std::numeric_limits<index_t>::max)() >> 1),
 				"buffer size is too large for a given indexing type (maximum size for n-bit type is 2^(n-1))");
 		};
 
