@@ -110,7 +110,7 @@ namespace jnk0le
 
                 if (head_trunc > tail_trunc)
                     return head_trunc - tail_trunc;
-                if (head_trunc < tail_trunc || tmp_head > tmp_tail)
+                if (head_trunc < tail_trunc || isFull())
                     return buffer_size - tail_trunc;
                 return 0;
 			}
@@ -134,10 +134,10 @@ namespace jnk0le
                 index_t head_trunc = tmp_head & buffer_mask;
                 index_t tail_trunc = tmp_tail & buffer_mask;
 
-                if (head_trunc > tail_trunc || tmp_head == tmp_tail)
-                    return buffer_size - head_trunc;
                 if (head_trunc < tail_trunc)
                     return tail_trunc - head_trunc;
+                if (head_trunc > tail_trunc || isEmpty())
+                    return buffer_size - head_trunc;
                 return 0;
             }
 
@@ -238,21 +238,22 @@ namespace jnk0le
 			}
 
 			/*!
-			 * \brief Bulk insert accounts for already performed inserts from external
-			 * function writeBuff
-			 * \param cnt Number of elements to insert
-			 * \return Number of inserted elements
+			 * \brief Bulk insert accounts for inserts performed via
+			 * external function writeBuff
+			 * \param cnt Number of elements inserted
+			 * \return Number of actually inserted elements as per
+			 * buffer capacity
 			 */
-			void bulk_insert(size_t cnt) {
+			index_t bulkInsert(size_t cnt) {
 				index_t tmp_head = head.load(std::memory_order_relaxed);
 				index_t tmp_tail = tail.load(std::memory_order_relaxed);
 
                 // It is an error to insert more elements than
-                // available. Thus if inserted not equal cnt below the
-                // ringbuffer is trashed.
+                // available. If so truncate insert.
                 size_t inserted = cnt < writeAvailable() ? cnt : writeAvailable();
                 tmp_head += inserted;
 				head.store(tmp_head, index_release_barrier);
+                return inserted;
             }
 
 			/*!
@@ -308,11 +309,7 @@ namespace jnk0le
 			 */
 			T* space() {
 				index_t tmp_head = head.load(std::memory_order_relaxed);
-
-				if( tmp_head - tail.load(index_acquire_barrier) == buffer_size )
-					return nullptr;
-				else
-                    return &data_buff[tmp_head & buffer_mask];
+                return isFull() ? nullptr : &data_buff[tmp_head & buffer_mask];
             }
 
             /*!
@@ -563,7 +560,7 @@ namespace jnk0le
             if (res < 0)
                 return res;
             total += static_cast<unsigned>(res);
-            buff.bulk_insert(res);
+            buff.bulkInsert(res);
         }
         return static_cast<int>(total);
     }
