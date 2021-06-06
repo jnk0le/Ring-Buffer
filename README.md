@@ -19,7 +19,7 @@
 ## example
 
 ```
-Ringbuffer<const char*, 256> message;
+jnk0le::Ringbuffer<const char*, 256> message;
 
 int main()
 {
