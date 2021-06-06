@@ -37,13 +37,3 @@ extern "C" void SysTick_Handler(void)
 {
 	message.insert("SysTick_Handler");
 }
-
-// if multiple contexts are writing/reading buffer they shall not be interrupting each other 
-// in this case, those interrupts have to be of the same priority (nesting not allowed) 
-
-extern "C" void USART2_IRQHandler(void)
-{
-	message.insert("USART2_IRQHandler");
-	//...
-}
-```
