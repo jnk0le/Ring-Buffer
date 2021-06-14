@@ -63,6 +63,17 @@ namespace jnk0le
 			}
 
 			/*!
+             * \brief For debug purposes. Outputs data_buff array in full
+             */
+            void print()
+            {
+                std::cout << "{ " << data_buff[0];
+                for (unsigned i = 1; i < buffer_size; i++)
+                    std::cout << ", " << data_buff[i];
+                std::cout << " };" << std::endl;
+            }
+
+            /*!
 			 * \brief Check if buffer is empty
 			 * \return True if buffer is empty
 			 */
@@ -87,12 +98,48 @@ namespace jnk0le
 			}
 
 			/*!
+			 * \brief Calculates the number of elements that can be read
+			 *        from a continous memory segment starting at peek()
+			 * \return Number of elements that can be read as a continous memory segment
+			 */
+			index_t readAvailableContinous(void) const {
+                index_t tmp_head   = head.load(index_acquire_barrier);
+                index_t tmp_tail   = tail.load(std::memory_order_relaxed);
+                index_t head_trunc = tmp_head & buffer_mask;
+                index_t tail_trunc = tmp_tail & buffer_mask;
+
+                if (head_trunc > tail_trunc)
+                    return head_trunc - tail_trunc;
+                if (head_trunc < tail_trunc || isFull())
+                    return buffer_size - tail_trunc;
+                return 0;
+			}
+
+			/*!
 			 * \brief Check how many elements can be written into the buffer
 			 * \return Number of free slots that can be be written
 			 */
 			index_t writeAvailable(void) const {
 				return buffer_size - (head.load(std::memory_order_relaxed) - tail.load(index_acquire_barrier));
 			}
+
+			/*!
+			 * \brief Calculates then number of elements that can be written
+			 *        into a continous memory segment starting at space()
+			 * \return Number of elements that can be written as a continous memory segment
+			 */
+            index_t writeAvailableContinous(void) const {
+                index_t tmp_head   = head.load(index_acquire_barrier);
+                index_t tmp_tail   = tail.load(std::memory_order_relaxed);
+                index_t head_trunc = tmp_head & buffer_mask;
+                index_t tail_trunc = tmp_tail & buffer_mask;
+
+                if (head_trunc < tail_trunc)
+                    return tail_trunc - head_trunc;
+                if (head_trunc > tail_trunc || isEmpty())
+                    return buffer_size - head_trunc;
+                return 0;
+            }
 
 			/*!
 			 * \brief Inserts data into internal buffer, without blocking
@@ -191,6 +238,25 @@ namespace jnk0le
 			}
 
 			/*!
+			 * \brief Bulk insert accounts for inserts performed via
+			 * external function writeBuff
+			 * \param cnt Number of elements inserted
+			 * \return Number of actually inserted elements as per
+			 * buffer capacity
+			 */
+			index_t bulkInsert(size_t cnt) {
+				index_t tmp_head = head.load(std::memory_order_relaxed);
+				index_t tmp_tail = tail.load(std::memory_order_relaxed);
+
+                // It is an error to insert more elements than
+                // available. If so truncate insert.
+                size_t inserted = cnt < writeAvailable() ? cnt : writeAvailable();
+                tmp_head += inserted;
+				head.store(tmp_head, index_release_barrier);
+                return inserted;
+            }
+
+			/*!
 			 * \brief Reads one element from internal buffer without blocking
 			 * \param[out] data Reference to memory location where removed element will be stored
 			 * \return True if data was fetched from the internal buffer
@@ -235,6 +301,18 @@ namespace jnk0le
 			}
 
 			/*!
+			 * \brief Gets the first empty position in the buffer on consumed side
+			 *
+			 * It is safe to use and modify item contents only on consumer side
+			 *
+			 * \return Pointer to first empty position, nullptr if buffer is full
+			 */
+			T* space() {
+				index_t tmp_head = head.load(std::memory_order_relaxed);
+                return isFull() ? nullptr : &data_buff[tmp_head & buffer_mask];
+            }
+
+            /*!
 			 * \brief Gets the n'th element on consumed side
 			 *
 			 * It is safe to use and modify item contents only on consumer side
@@ -465,6 +543,45 @@ namespace jnk0le
 
 			return read;
 		}
+
+    using PosixRead  = int (*)(int, void       *, size_t );
+    using PosixWrite = int (*)(int, void const *, size_t );
+
+    template<typename T, size_t buffer_size, bool fake_tso, size_t cacheline_size, typename index_t>
+    int writeBuff(Ringbuffer<T, buffer_size, fake_tso, cacheline_size, index_t> & buff,
+                  PosixRead fread, int file_descriptor)
+    {
+        unsigned total = 0;
+        while (!buff.isFull())
+        {
+            int res  = fread(file_descriptor, buff.space(), buff.writeAvailableContinous());
+            if (res == 0)
+                break;
+            if (res < 0)
+                return res;
+            total += static_cast<unsigned>(res);
+            buff.bulkInsert(res);
+        }
+        return static_cast<int>(total);
+    }
+
+    template<typename T, size_t buffer_size, bool fake_tso, size_t cacheline_size, typename index_t>
+    int readBuff(Ringbuffer<T, buffer_size, fake_tso, cacheline_size, index_t> & buff,
+                 PosixWrite fwrite, int file_descriptor)
+    {
+        unsigned total = 0;
+        while (!buff.isEmpty())
+        {
+            int res = fwrite(file_descriptor, buff.peek(), buff.readAvailableContinous());
+            if (res == 0)
+                break;
+            if (res < 0)
+                return res;
+            total += static_cast<unsigned>(res);
+            buff.remove(res);
+        }
+        return static_cast<int>(total);
+    }
 
 } // namespace
 
