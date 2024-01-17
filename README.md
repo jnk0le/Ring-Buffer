@@ -1,10 +1,10 @@
 # Ring Buffer
 
 - pure C++11, no OS dependency
+- lock and wait free bounded SPSC operation
 - no exceptions, RTTI, virtual functions and dynamic memory allocation
 - designed for compile time (static) allocation and type evaluation
 - no wasted slots (in powers of 2 granularity)
-- lock and wait free SPSC operation
 - underrun and overrun checks in insert/remove functions
 - highly efficient on most microcontroller architectures (nearly equal performance as in 'wasted-slot' implemetation)
 
