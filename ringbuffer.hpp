@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 2.0.4
+ * \version 2.0.5
  * \brief Simple SPSC ring buffer implementation
  *
  * \author Jan Oleksiewicz <jnk0le@hotmail.com>
@@ -38,7 +38,7 @@ namespace jnk0le
 
 		/*!
 		 * \brief Special case constructor to premature out unnecessary initialization code when object is
-		 * instatiated in .bss section
+		 * instantiated in .bss section
 		 * \warning If object is instantiated on stack, heap or inside noinit section then the contents have to be
 		 * explicitly cleared before use
 		 * \param dummy Ignored
@@ -343,9 +343,11 @@ namespace jnk0le
 			"indexing type size is larger than size_t, operation is not lock free and doesn't make sense");
 
 		static_assert(std::numeric_limits<index_t>::is_integer, "indexing type is not integral type");
-		static_assert(!(std::numeric_limits<index_t>::is_signed), "indexing type shall not be signed");
+		static_assert(!(std::numeric_limits<index_t>::is_signed), "indexing type must not be signed");
 		static_assert(buffer_mask <= ((std::numeric_limits<index_t>::max)() >> 1),
 			"buffer size is too large for a given indexing type (maximum size for n-bit type is 2^(n-1))");
+
+		static_assert(std::is_trivial<T>::value, "non trivial objects will currently break");
 	};
 
 	template<typename T, size_t buffer_size, bool fake_tso, size_t cacheline_size, typename index_t>
