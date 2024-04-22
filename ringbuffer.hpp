@@ -15,6 +15,7 @@
 #include <stddef.h>
 #include <limits>
 #include <atomic>
+#include <type_traits>
 
 namespace jnk0le
 {
