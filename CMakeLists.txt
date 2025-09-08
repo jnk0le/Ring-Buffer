@@ -5,6 +5,7 @@ project(${APPNAME} VERSION 0.1.0)
 option(RINGBUFFER_INSTALL "Generate install target of the library" OFF)
 
 add_library(${APPNAME} INTERFACE)
+add_library(jnk0le::RingBuffer ALIAS RingBuffer)
 
 set_target_properties(${APPNAME} PROPERTIES
     CXX_STANDARD 23
