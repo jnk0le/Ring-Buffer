@@ -18,7 +18,7 @@
 
 ## example
 
-```
+```cpp
 jnk0le::Ringbuffer<const char*, 256> message;
 
 int main()
@@ -37,3 +37,20 @@ extern "C" void SysTick_Handler(void)
 {
 	message.insert("SysTick_Handler");
 }
+```
+
+## CMake integration - FetchContent
+
+```cmake
+FetchContent_Declare(RingBuffer
+	GIT_REPOSITORY https://github.com/jnk0le/Ring-Buffer.git
+	GIT_TAG master
+	FIND_PACKAGE_ARGS NAMES RingBuffer)
+FetchContent_MakeAvailable(RingBuffer)
+target_link_libraries(myTarget INTERFACE jnk0le::RingBuffer)
+```
+
+
+| CMake Option       | Description            | Default |
+| :----------------- | :--------------------- | :-----: |
+| RINGBUFFER_INSTALL | Create install targets |   OFF   |
