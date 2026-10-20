@@ -236,6 +236,20 @@ namespace jnk0le
 		}
 
 		/*!
+		 * \brief Gets the first element in the buffer on consumed side
+		 *
+		 * \return Const pointer to first element, nullptr if buffer was empty
+		 */
+		const T* peek() const noexcept {
+			index_t tmp_tail = tail.load(std::memory_order_relaxed);
+
+			if(tmp_tail == head.load(index_acquire_barrier))
+				return nullptr;
+			else
+				return &data_buff[tmp_tail & buffer_mask];
+		}
+
+		/*!
 		 * \brief Gets the n'th element on consumed side
 		 *
 		 * It is safe to use and modify item contents only on consumer side
@@ -244,6 +258,21 @@ namespace jnk0le
 		 * \return Pointer to requested element, nullptr if index exceeds storage count
 		 */
 		T* at(size_t index) {
+			index_t tmp_tail = tail.load(std::memory_order_relaxed);
+
+			if((head.load(index_acquire_barrier) - tmp_tail) <= index)
+				return nullptr;
+			else
+				return &data_buff[(tmp_tail + index) & buffer_mask];
+		}
+
+		/*!
+		 * \brief Gets the n'th element on consumed side
+		 *
+		 * \param index Item offset starting on the consumed side
+		 * \return Const pointer to requested element, nullptr if index exceeds storage count
+		 */
+		const T* at(size_t index) const noexcept {
 			index_t tmp_tail = tail.load(std::memory_order_relaxed);
 
 			if((head.load(index_acquire_barrier) - tmp_tail) <= index)
@@ -264,6 +293,20 @@ namespace jnk0le
 		 * \return Reference to requested element, undefined if index exceeds storage count
 		 */
 		T& operator[](size_t index) {
+			return data_buff[(tail.load(std::memory_order_relaxed) + index) & buffer_mask];
+		}
+
+		/*!
+		 * \brief Gets the n'th element on consumed side
+		 *
+		 * Unchecked operation, assumes that software already knows if the element can be used, if
+		 * requested index is out of bounds then reference will point to somewhere inside the buffer
+		 * The isEmpty() and readAvailable() will place appropriate memory barriers if used as loop limiter
+		 *
+		 * \param index Item offset starting on the consumed side
+		 * \return Const reference to requested element, undefined if index exceeds storage count
+		 */
+		const T& operator[](size_t index) const noexcept {
 			return data_buff[(tail.load(std::memory_order_relaxed) + index) & buffer_mask];
 		}
 
