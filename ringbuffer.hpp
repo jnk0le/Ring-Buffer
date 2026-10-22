@@ -122,6 +122,7 @@ namespace jnk0le
 		 */
 		bool insert(const T* data)
 		{
+			// code needs some duplication due to corner case of copying large structs when insert is not inlined.
 			index_t tmp_head = head.load(std::memory_order_relaxed);
 
 			if((tmp_head - tail.load(index_acquire_barrier)) == buffer_size)
