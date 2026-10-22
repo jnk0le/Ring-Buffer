@@ -1,6 +1,6 @@
 /*!
  * \file ringbuffer.hpp
- * \version 2.0.6
+ * \version 2.0.5
  * \brief Simple SPSC ring buffer implementation
  *
  * \author Jan Oleksiewicz <jnk0le@hotmail.com>
@@ -122,7 +122,17 @@ namespace jnk0le
 		 */
 		bool insert(const T* data)
 		{
-			return insert(*data);
+			index_t tmp_head = head.load(std::memory_order_relaxed);
+
+			if((tmp_head - tail.load(index_acquire_barrier)) == buffer_size)
+				return false;
+			else
+			{
+				data_buff[tmp_head++ & buffer_mask] = *data;
+				std::atomic_signal_fence(std::memory_order_release);
+				head.store(tmp_head, index_release_barrier);
+			}
+			return true;
 		}
 
 		/*!
